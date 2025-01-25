@@ -8,14 +8,17 @@ from utils.store import Store
 class AppManager:
     def __init__(self):
         # Initialize the Dash app
-        self.app = Dash("App Name", use_pages=True)
-        self.app.layout = self.create_layout()
+        self.initialize_store()
+        self.create_app()
 
         self.app_config()
 
         # Register callbacks
         self.register_callbacks()
-        self.initialize_store()
+
+    def create_app(self) -> "Dash":
+        self.app = Dash("App Name", use_pages=True)
+        self.app.layout = self.create_layout()
 
     def create_layout(self) -> "html.Div":
         """Define the layout of the app."""
