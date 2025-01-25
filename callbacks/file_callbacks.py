@@ -1,7 +1,6 @@
 import base64
 import io
 
-import pandas as pd
 import polars as pl
 from dash import Dash, Input, Output, State
 
@@ -28,8 +27,8 @@ def register_file_callbacks(app: "Dash") -> None:
                     # df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
                     df = pl.read_csv(io.StringIO(decoded.decode("utf-8")))
                     Store.set_static("data_frame", df)
-                elif filename.endswith(".xlsx"):
-                    df = pd.read_excel(io.BytesIO(decoded))
+                # elif filename.endswith(".xlsx"):
+                #     df = pd.read_excel(io.BytesIO(decoded))
                 else:
                     return "Unsupported file type."
 

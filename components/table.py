@@ -10,7 +10,7 @@ def table_component(dataframe: "pl.DataFrame" = None) -> "dash_table.DataTable":
 
     return dash_table.DataTable(
         id="data-table",
-        data=dataframe.to_dicts(),  # Convert DataFrame to list of dicts
+        data=dataframe.head().to_dicts(),  # Convert DataFrame to list of dicts
         columns=[{"name": col, "id": col} for col in dataframe.columns],
         style_table={"overflowX": "auto"},
         style_cell={"textAlign": "left"},
