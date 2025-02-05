@@ -13,7 +13,7 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
         Output("correlation-heatmap", "figure"),  # Update correlation heatmap
         Input("file-upload-status", "data"),  # Trigger when file is uploaded
         Input("correlation-method-dropdown", "value"),  # Selected correlation method
-        prevent_initial_call=True,
+        # prevent_initial_call=True,
     )
     def update_correlation_heatmap(file_uploaded, method):
         """Creates a correlation heatmap for numerical features based on the selected method."""

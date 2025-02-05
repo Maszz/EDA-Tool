@@ -16,7 +16,7 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
         Input("column-dropdown", "value"),  # Selected feature
         Input("outlier-algo-dropdown", "value"),  # Selected algorithm
         State("file-upload-status", "data"),  # Ensure file is uploaded
-        prevent_initial_call=True,
+        # prevent_initial_call=True,
     )
     def update_outlier_boxplot(column_name, algorithm, file_uploaded):
         """Creates a boxplot for detecting outliers using selected algorithm."""

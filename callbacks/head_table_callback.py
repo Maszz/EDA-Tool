@@ -15,7 +15,6 @@ def register_head_table_callbacks(app: "Dash") -> None:
     @app.callback(
         Output("output-table", "children"),
         Input("file-upload-status", "data"),  # Trigger variable
-        prevent_initial_call=True,
     )
     def render_table(trigger):
         """Renders the data table when a file is successfully uploaded."""

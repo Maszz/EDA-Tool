@@ -12,7 +12,7 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
         Output("column-dropdown", "options"),  # Populate dropdown options
         Output("column-dropdown", "value"),  # Set default selected value
         Input("file-upload-status", "data"),  # Trigger when file is uploaded
-        prevent_initial_call=True,
+        # prevent_initial_call=True,
     )
     def update_column_dropdown(file_uploaded):
         """Populates the dropdown with numerical feature names and selects the second column by default."""
@@ -24,10 +24,10 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
                     col for col in df.columns if df[col].dtype in (pl.Float64, pl.Int64)
                 ]
 
-                options = [{"label": col, "value": col} for col in numeric_columns]
+                options = [{"label": col, "value": col} for col in numeric_columns[1::]]
 
                 # Default to second column if available
-                default_value = options[1]["value"] if len(options) > 1 else None
+                default_value = options[0]["value"] if len(options) > 1 else None
 
                 return options, default_value
 

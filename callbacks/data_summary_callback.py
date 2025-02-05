@@ -10,7 +10,7 @@ def register_missing_values_callbacks(app: "Dash") -> None:
     @app.callback(
         Output("data-summary", "children"),  # Populate the dataset summary table
         Input("file-upload-status", "data"),  # Triggered when a file is uploaded
-        prevent_initial_call=True,
+        # prevent_initial_call=True,
     )
     def update_data_summary(file_uploaded):
         """Computes and displays the dataset summary including missing values."""

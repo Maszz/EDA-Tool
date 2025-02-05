@@ -15,7 +15,7 @@ def register_stat_table_callbacks(app: "Dash") -> None:
     @app.callback(
         Output("stats-table", "children"),  # Populate the stats table
         Input("file-upload-status", "data"),  # Triggered when a file is uploaded
-        prevent_initial_call=True,
+        # prevent_initial_call=True,
     )
     def update_stats_table(file_uploaded):
         """Compute and display the statistical summary of the dataset."""
