@@ -13,6 +13,9 @@ from callbacks.correlation_heatmap_callbacks import (
     register_correlation_heatmap_callbacks,
 )
 from callbacks.feature_importance_callbacks import register_feature_importance_callbacks
+from callbacks.missing_val_hist_calbacks import (
+    register_missing_values_heatmap_callbacks,
+)
 from utils.store import Store
 import dash_bootstrap_components as dbc
 from components.upload import upload_component
@@ -245,6 +248,7 @@ class AppManager:
         register_outlier_detection_callbacks(self.app)
         register_correlation_heatmap_callbacks(self.app)
         register_feature_importance_callbacks(self.app)
+        register_missing_values_heatmap_callbacks(self.app)
 
     def initialize_store(self) -> None:
         self.store = Store()

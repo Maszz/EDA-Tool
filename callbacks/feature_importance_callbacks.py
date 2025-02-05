@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from dash import dcc
 from boruta import BorutaPy
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.impute import SimpleImputer
 
 
 def register_feature_importance_callbacks(app: "Dash") -> None:
@@ -44,21 +45,17 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
         return [], ""  # Return empty dropdown if no data
 
     @app.callback(
-        Output("feature-importance-plot", "figure"),  # Update feature importance plot
-        Output("training-status", "children"),  # Show training status message
-        Input("target-column", "value"),  # Selected target column
-        Input(
-            "importance-method", "value"
-        ),  # Selected importance method (Native or SHAP)
-        State("file-upload-status", "data"),  # Ensure file is uploaded
+        Output("feature-importance-plot", "figure"),
+        Output("training-status", "children"),
+        Input("target-column", "value"),
+        Input("importance-method", "value"),
+        State("file-upload-status", "data"),
     )
     def update_feature_importance_plot(target_column, importance_method, file_uploaded):
         """Calculates and displays feature importance for the selected target column using LightGBM or Boruta."""
         if file_uploaded and target_column:
             df: pl.DataFrame = Store.get_static("data_frame")
             if df is not None:
-                # Training message is already updated in update_target_dropdown
-
                 # Separate features and target
                 X_df = df.drop(
                     [df.columns[0], target_column]
@@ -85,14 +82,24 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
                 # Convert X to a NumPy array
                 X = X_df.to_numpy()
 
-                # Encode target column if categorical
+                # Handle missing values in X (like LightGBM)
+                imputer_X = SimpleImputer(strategy="constant", fill_value=-999)
+                X = imputer_X.fit_transform(X)
+
+                # Handle missing values in y
                 if df[target_column].dtype == pl.Utf8:
-                    # Target is categorical
+                    # Categorical target: Fill NaNs before encoding
+                    imputer_y = SimpleImputer(strategy="most_frequent")
+                    y = imputer_y.fit_transform(y.reshape(-1, 1)).ravel()
+
+                    # Encode categorical target
                     le = LabelEncoder()
                     y = le.fit_transform(y)
                     model = lgb.LGBMClassifier(random_state=42, n_jobs=-1)
                 else:
-                    # Target is numerical
+                    # Numerical target: Fill NaNs
+                    imputer_y = SimpleImputer(strategy="mean")
+                    y = imputer_y.fit_transform(y.reshape(-1, 1)).ravel()
                     model = lgb.LGBMRegressor(random_state=42, n_jobs=-1)
 
                 if importance_method == "native":
@@ -109,6 +116,7 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
                         else RandomForestClassifier(n_jobs=-1, random_state=42)
                     )
 
+                    # Ensure RandomForest receives same preprocessed data
                     boruta_selector = BorutaPy(
                         rf_model,
                         n_estimators="auto",
@@ -130,8 +138,8 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
 
                 # Create bar plot
                 fig = px.bar(
-                    x=importance_df["Importance"].to_list(),  # Polars column to list
-                    y=importance_df["Feature"].to_list(),  # Polars column to list
+                    x=importance_df["Importance"].to_list(),
+                    y=importance_df["Feature"].to_list(),
                     orientation="h",
                     title=f"Feature Importance ({importance_method.upper()}) - Target: {target_column}",
                     labels={"x": "Importance Score", "y": "Features"},

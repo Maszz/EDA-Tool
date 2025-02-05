@@ -1,5 +1,5 @@
 import dash
-from dash import html
+from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 dash.register_page(__name__, path="/", title="Data Overview")
@@ -10,7 +10,7 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
         [
             html.H1("📋 Data Overview", className="display-4 text-center"),
             html.P(
-                "Explore your dataset by checking the preview and missing values.",
+                "Explore your dataset by checking the preview, summary, and missing values.",
                 className="lead text-muted text-center",
             ),
             # Data Preview (First 10 Records)
@@ -32,9 +32,10 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                 ],
                 className="justify-content-center mb-4",
             ),
-            # Dataset Summary (Data Types & Missing Values)
+            # Dataset Summary & Missing Value Histogram
             dbc.Row(
                 [
+                    # Dataset Summary (Data Types & Missing Values)
                     dbc.Col(
                         dbc.Card(
                             [
@@ -46,7 +47,26 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                             ],
                             className="shadow-sm",
                         ),
-                        width=10,
+                        width=6,
+                    ),
+                    # Missing Value Histogram
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(
+                                    "Missing Data Patterns",
+                                    className="bg-danger text-white",
+                                ),
+                                dbc.CardBody(
+                                    dcc.Loading(
+                                        type="circle",
+                                        children=[dcc.Graph(id="missing-value-hist")],
+                                    )
+                                ),
+                            ],
+                            className="shadow-sm",
+                        ),
+                        width=6,
                     ),
                 ],
                 className="justify-content-center mb-4",
