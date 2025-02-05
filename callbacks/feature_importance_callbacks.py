@@ -6,6 +6,8 @@ from utils.store import Store
 import lightgbm as lgb
 import plotly.graph_objects as go
 from dash import dcc
+from boruta import BorutaPy
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
 
 def register_feature_importance_callbacks(app: "Dash") -> None:
@@ -18,8 +20,9 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
         ),  # Update training status
         Input("file-upload-status", "data"),  # Trigger when a file is uploaded
         Input("target-column", "value"),  # Trigger when a new target column is selected
+        Input("importance-method", "value"),  # Trigger when importance method changes
     )
-    def update_target_dropdown(file_uploaded, target_column):
+    def update_target_dropdown(file_uploaded, target_column, importance_method):
         """Populates the dropdown with available columns and updates training status."""
         ctx_id = ctx.triggered_id  # Identify which input triggered callback
 
@@ -33,7 +36,7 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
                     return options, "⚠️ No target column selected."
 
                 # If a target is selected, show training in progress message
-                if ctx_id == "target-column":
+                if ctx_id in ["target-column", "importance-method"]:
                     return options, "⏳ Training in Progress... Please wait."
 
                 return options, ""
@@ -44,11 +47,13 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
         Output("feature-importance-plot", "figure"),  # Update feature importance plot
         Output("training-status", "children"),  # Show training status message
         Input("target-column", "value"),  # Selected target column
+        Input(
+            "importance-method", "value"
+        ),  # Selected importance method (Native or SHAP)
         State("file-upload-status", "data"),  # Ensure file is uploaded
-        # prevent_initial_call=True,
     )
-    def update_feature_importance_plot(target_column, file_uploaded):
-        """Calculates and displays feature importance for the selected target column using LightGBM."""
+    def update_feature_importance_plot(target_column, importance_method, file_uploaded):
+        """Calculates and displays feature importance for the selected target column using LightGBM or Boruta."""
         if file_uploaded and target_column:
             df: pl.DataFrame = Store.get_static("data_frame")
             if df is not None:
@@ -90,11 +95,32 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
                     # Target is numerical
                     model = lgb.LGBMRegressor(random_state=42, n_jobs=-1)
 
-                # Train the model
-                model.fit(X, y)
+                if importance_method == "native":
+                    # Train the LightGBM model
+                    model.fit(X, y)
+                    importances = model.feature_importances_
 
-                # Extract feature importance
-                importances = model.feature_importances_
+                elif importance_method == "boruta":
+                    # Use BorutaPy for feature selection
+                    print("🔍 Running Boruta Feature Selection...")
+                    rf_model = (
+                        RandomForestRegressor(n_jobs=-1, random_state=42)
+                        if df[target_column].dtype != pl.Utf8
+                        else RandomForestClassifier(n_jobs=-1, random_state=42)
+                    )
+
+                    boruta_selector = BorutaPy(
+                        rf_model,
+                        n_estimators="auto",
+                        verbose=2,
+                        random_state=42,
+                    )
+
+                    # Fit Boruta selector
+                    boruta_selector.fit(X, y)
+
+                    # Get selected feature importances
+                    importances = boruta_selector.ranking_
 
                 # Map importance to feature names and sort using Polars
                 feature_names = X_df.columns
@@ -107,16 +133,14 @@ def register_feature_importance_callbacks(app: "Dash") -> None:
                     x=importance_df["Importance"].to_list(),  # Polars column to list
                     y=importance_df["Feature"].to_list(),  # Polars column to list
                     orientation="h",
-                    title=f"Feature Importance (Target: {target_column})",
+                    title=f"Feature Importance ({importance_method.upper()}) - Target: {target_column}",
                     labels={"x": "Importance Score", "y": "Features"},
                     template="plotly_white",
                 )
                 fig.update_traces(marker_color="blue", opacity=0.7)
 
                 # Update final message
-                final_message = (
-                    "✅ Training Completed! Feature Importance is now displayed."
-                )
+                final_message = f"✅ Training Completed using {importance_method.capitalize()} method! Feature Importance is now displayed."
 
                 return fig, final_message
 

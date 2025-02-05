@@ -55,12 +55,29 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                     "Feature Importance (ML Explainability)"
                                 ),
                                 dbc.CardBody(
-                                    dcc.Loading(  # Show spinner while training
-                                        type="circle",
-                                        children=[
-                                            dcc.Graph(id="feature-importance-plot"),
-                                        ],
-                                    )
+                                    [
+                                        dcc.Dropdown(
+                                            id="importance-method",
+                                            options=[
+                                                {
+                                                    "label": "Native Importance (LightGBM)",
+                                                    "value": "native",
+                                                },
+                                                {
+                                                    "label": "Boruta Importance",
+                                                    "value": "boruta",
+                                                },
+                                            ],
+                                            value="native",  # Default selection
+                                            className="dropdown-style",
+                                        ),
+                                        dcc.Loading(  # Show spinner while training
+                                            type="circle",
+                                            children=[
+                                                dcc.Graph(id="feature-importance-plot"),
+                                            ],
+                                        ),
+                                    ]
                                 ),
                             ],
                             className="shadow-sm",
