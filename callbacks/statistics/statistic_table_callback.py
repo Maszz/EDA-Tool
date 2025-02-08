@@ -10,6 +10,7 @@ from dash import Dash
 import plotly.graph_objects as go
 import plotly.express as px
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 
 
 def register_statistic_table_callbacks(app: "Dash") -> None:
@@ -31,11 +32,24 @@ def register_statistic_table_callbacks(app: "Dash") -> None:
             logger.error("❌ Dataset not found in memory despite file upload.")
             return "No data available for statistical summary."
 
+        # Check cache
+        cache_key = "dataset_statistics"
+        cached_stats = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_stats:
+            logger.info("✅ Loaded cached dataset statistics.")
+            return cached_stats
+
         try:
             # Compute statistical summary using Polars
             stats = df.describe()
+            result = table_component(stats)
+
+            # Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, result)
+
             logger.info("✅ Successfully computed dataset statistics.")
-            return table_component(stats)
+            return result
         except Exception as e:
             logger.error(f"❌ Error while computing dataset statistics: {e}")
             return "❌ Failed to compute statistics."
@@ -69,6 +83,16 @@ def register_statistic_table_callbacks(app: "Dash") -> None:
         if selected_column not in df.columns:
             logger.error(f"❌ Column '{selected_column}' not found in dataset.")
             return "No valid data for analysis.", go.Figure()
+
+        # Generate cache key
+        cache_key = f"skewness_kurtosis_{selected_column}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_result:
+            logger.info(
+                f"✅ Loaded cached skewness, kurtosis, and KDE for '{selected_column}'."
+            )
+            return cached_result
 
         logger.info(
             f"🔍 Computing skewness, kurtosis, and KDE for '{selected_column}'."
@@ -151,7 +175,12 @@ def register_statistic_table_callbacks(app: "Dash") -> None:
             )
 
             logger.info(f"✅ Successfully generated KDE plot for '{selected_column}'.")
-            return table, fig
+
+            # Store in cache
+            result = (table, fig)
+            CACHE_MANAGER.save_cache(cache_key, df, result)
+
+            return result
 
         except Exception as e:
             logger.error(f"❌ Error while computing skewness, kurtosis, or KDE: {e}")

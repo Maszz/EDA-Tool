@@ -5,6 +5,7 @@ import polars as pl
 from dash import Dash, Input, Output, State
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import cache manager
 
 
 def register_feature_distribution_callbacks(app: "Dash") -> None:
@@ -16,7 +17,7 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
         State("file-upload-status", "data"),  # Ensure file is uploaded
     )
     def update_distribution_plot(column_name, file_uploaded):
-        """Creates a histogram for the selected feature."""
+        """Creates a histogram for the selected feature with caching."""
         if not file_uploaded:
             logger.warning("⚠️ No dataset uploaded. Skipping distribution plot.")
             return go.Figure()
@@ -35,6 +36,14 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
             logger.error(f"❌ Column '{column_name}' not found in dataset.")
             return go.Figure()
 
+        # Check cache before computing
+        cache_key = f"distribution_plot_{column_name}"
+        cached_plot = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_plot:
+            logger.info(f"✅ Loaded cached distribution plot for '{column_name}'.")
+            return cached_plot
+
         logger.info(f"📊 Generating distribution plot for '{column_name}'.")
 
         try:
@@ -50,8 +59,11 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
                 template="plotly_white",
             )
 
+            # Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+
             logger.info(
-                f"✅ Successfully generated distribution plot for '{column_name}'."
+                f"✅ Successfully generated and cached distribution plot for '{column_name}'."
             )
             return fig
 

@@ -8,6 +8,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import cache manager
 
 
 def register_outlier_detection_callbacks(app: "Dash") -> None:
@@ -38,6 +39,16 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
         if column_name not in df.columns:
             logger.error(f"❌ Column '{column_name}' not found in dataset.")
             return go.Figure()
+
+        # Generate cache key
+        cache_key = f"outlier_detection_{column_name}_{algorithm}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_result:
+            logger.info(
+                f"✅ Loaded cached outlier detection for '{column_name}' using {algorithm}."
+            )
+            return cached_result
 
         logger.info(f"🔍 Detecting outliers in '{column_name}' using {algorithm}.")
 
@@ -84,6 +95,9 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
                 name="Outliers",
             )
 
+            # Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+
             return fig
 
         except Exception as e:
@@ -91,6 +105,7 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
             return go.Figure()  # Return empty figure
 
 
+# ✅ **Outlier Detection Methods (No Change)**
 def detect_outliers_zscore(data: np.ndarray, threshold: float = 3.0) -> np.ndarray:
     """Detect outliers using Z-Score method (Handles NaNs)."""
     if data.size == 0:

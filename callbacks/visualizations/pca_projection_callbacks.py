@@ -7,6 +7,7 @@ from dash import Input, Output
 from sklearn.decomposition import PCA
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 
 
 def register_pca_projection_callbacks(app):
@@ -41,6 +42,14 @@ def register_pca_projection_callbacks(app):
                 "⚠️ PCA requires at least two numerical features. Insufficient data."
             )
             return go.Figure()
+
+        # Generate cache key
+        cache_key = "pca_projection"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_result:
+            logger.info(f"✅ Loaded cached PCA 2D projection.")
+            return cached_result
 
         try:
             # Handle missing values: replace NaNs with None & drop them
@@ -79,6 +88,10 @@ def register_pca_projection_callbacks(app):
             logger.info(
                 f"✅ Successfully generated PCA 2D projection with {len(pca_x)} points."
             )
+
+            # Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+
             return fig
 
         except Exception as e:

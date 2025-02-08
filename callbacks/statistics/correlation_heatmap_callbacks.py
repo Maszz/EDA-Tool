@@ -6,6 +6,7 @@ import polars as pl
 from dash import Dash, Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER
 
 
 def register_correlation_heatmap_callbacks(app: "Dash") -> None:
@@ -28,6 +29,13 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
         if df is None:
             logger.error("❌ Dataset not found in memory despite file upload.")
             return go.Figure()
+
+        # ✅ Check cache before recalculating
+        cache_key = f"correlation_heatmap_{method}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+        if cached_result:
+            logger.info(f"🔄 Loaded cached correlation heatmap ({method}).")
+            return cached_result  # Return cached result instantly
 
         # Select only numeric columns
         numeric_columns = [
@@ -69,6 +77,11 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
             logger.info(
                 f"✅ Correlation heatmap generated successfully using {method}."
             )
+
+            # ✅ Store result in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+            logger.info(f"💾 Cached correlation heatmap for method {method}.")
+
             return fig
 
         except Exception as e:

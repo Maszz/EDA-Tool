@@ -6,10 +6,11 @@ import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 
 
 def register_violin_plot_callbacks(app):
-    """Registers callbacks for the Violin Plot visualization."""
+    """Registers callbacks for the Violin Plot visualization with caching."""
 
     @app.callback(
         Output("violin-plot", "figure"),
@@ -18,27 +19,35 @@ def register_violin_plot_callbacks(app):
         Input("numeric-dropdown", "value"),
     )
     def update_violin_plot(file_uploaded, categorical_feature, numerical_feature):
-        """Generates a violin plot for a numerical feature grouped by a categorical feature with error handling."""
+        """Generates a violin plot for a numerical feature grouped by a categorical feature with caching and error handling."""
 
         if not file_uploaded:
-            logger.warning("⚠️ No dataset uploaded. Clearing Violin plot.")
-            return go.Figure()
+            return _log_and_return_empty("⚠️ No dataset uploaded. Clearing Violin plot.")
 
         df: pl.DataFrame = Store.get_static("data_frame")
 
         if df is None:
-            logger.error("❌ Dataset not found in memory despite file upload.")
-            return go.Figure()
+            return _log_and_return_empty(
+                "❌ Dataset not found in memory despite file upload."
+            )
 
         if not categorical_feature or not numerical_feature:
-            logger.warning("⚠️ Missing feature selection for Violin plot.")
-            return go.Figure()
+            return _log_and_return_empty("⚠️ Missing feature selection for Violin plot.")
 
         if categorical_feature not in df.columns or numerical_feature not in df.columns:
-            logger.error(
+            return _log_and_return_empty(
                 f"❌ Selected features {categorical_feature} or {numerical_feature} not found in dataset."
             )
-            return go.Figure()
+
+        # Generate a cache key based on dataset hash and selected features
+        cache_key = f"violin_{categorical_feature}_{numerical_feature}"
+        cached_plot = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_plot:
+            logger.info(
+                f"✅ Loaded cached Violin plot for {numerical_feature} by {categorical_feature}."
+            )
+            return cached_plot
 
         try:
             # Extract selected features and drop missing values
@@ -46,8 +55,9 @@ def register_violin_plot_callbacks(app):
 
             # Ensure sufficient data points
             if clean_df.height < 2:
-                logger.warning("⚠️ Insufficient valid data points for Violin plot.")
-                return go.Figure()
+                return _log_and_return_empty(
+                    "⚠️ Insufficient valid data points for Violin plot."
+                )
 
             # Convert Polars DataFrame to dictionary format for Plotly
             fig = px.violin(
@@ -67,8 +77,18 @@ def register_violin_plot_callbacks(app):
             logger.info(
                 f"✅ Successfully generated Violin plot for {numerical_feature} grouped by {categorical_feature}."
             )
+
+            # Store the generated plot in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+
             return fig
 
         except Exception as e:
             logger.error(f"❌ Error generating Violin plot: {e}")
             return go.Figure()
+
+
+def _log_and_return_empty(message: str):
+    """Helper function to log a warning and return an empty figure."""
+    logger.warning(message)
+    return go.Figure()

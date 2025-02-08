@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 
 
 def register_scatter_plot_callbacks(app):
@@ -18,7 +19,7 @@ def register_scatter_plot_callbacks(app):
         Input("feature-y-dropdown", "value"),
     )
     def update_scatter_plot(file_uploaded, feature_x, feature_y):
-        """Generates a scatter plot for selected numerical features with error handling."""
+        """Generates a scatter plot for selected numerical features with caching and error handling."""
 
         if not file_uploaded:
             logger.warning("⚠️ No dataset uploaded. Clearing Scatter plot.")
@@ -39,6 +40,16 @@ def register_scatter_plot_callbacks(app):
                 f"❌ Selected features {feature_x} or {feature_y} not found in dataset."
             )
             return go.Figure()
+
+        # Generate a cache key for the scatter plot
+        cache_key = f"scatter_{feature_x}_{feature_y}"
+        cached_plot = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_plot:
+            logger.info(
+                f"✅ Loaded cached Scatter plot for {feature_x} vs {feature_y}."
+            )
+            return cached_plot
 
         try:
             # Extract feature data
@@ -61,6 +72,10 @@ def register_scatter_plot_callbacks(app):
             logger.info(
                 f"✅ Successfully generated Scatter plot for {feature_x} vs {feature_y}."
             )
+
+            # Store the generated plot in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+
             return fig
 
         except Exception as e:

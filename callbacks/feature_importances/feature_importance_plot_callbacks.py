@@ -4,7 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State
 from utils.store import Store
-from utils.logger_config import logger  # Import logger
+from utils.logger_config import logger  # ✅ Import Logger
+from utils.cache_manager import CACHE_MANAGER  # ✅ Import CacheManager
 import lightgbm as lgb
 from boruta import BorutaPy
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
@@ -13,7 +14,7 @@ from sklearn.preprocessing import LabelEncoder
 
 
 def register_feature_importance_plot_callbacks(app):
-    """Registers callbacks for computing and visualizing feature importance."""
+    """Registers callbacks for computing and visualizing feature importance with caching."""
 
     @app.callback(
         Output("feature-importance-plot", "figure"),
@@ -23,7 +24,7 @@ def register_feature_importance_plot_callbacks(app):
         State("file-upload-status", "data"),
     )
     def update_feature_importance_plot(target_column, importance_method, file_uploaded):
-        """Computes and displays feature importance for the selected target column using LightGBM or Boruta."""
+        """Computes and displays feature importance using LightGBM or Boruta with caching."""
 
         # ✅ Check if a file is uploaded
         if not file_uploaded:
@@ -41,6 +42,15 @@ def register_feature_importance_plot_callbacks(app):
         if not target_column:
             logger.warning("⚠️ No target column selected for feature importance.")
             return go.Figure(), "⚠️ No target column selected."
+
+        # ✅ Create a Unique Cache Key Including the Target Column
+        cache_key = f"feature_importance_{importance_method}_{target_column}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+        if cached_result:
+            logger.info(
+                f"🔄 Using cached feature importance for {importance_method} (Target: {target_column})."
+            )
+            return cached_result  # Skip recomputation
 
         try:
             # Separate features and target
@@ -132,6 +142,13 @@ def register_feature_importance_plot_callbacks(app):
             fig.update_traces(marker_color="blue", opacity=0.7)
 
             final_message = f"✅ Training Completed using {importance_method.capitalize()} method! Feature Importance is now displayed."
+
+            # ✅ Save to Cache for Future Use
+            CACHE_MANAGER.save_cache(cache_key, df, (fig, final_message))
+            logger.info(
+                f"💾 Feature importance cached for {importance_method} (Target: {target_column})."
+            )
+
             return fig, final_message
 
         except Exception as e:

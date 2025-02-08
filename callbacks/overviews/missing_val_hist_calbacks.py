@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from dash import Dash, Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import cache manager
 
 
 def register_missing_values_callbacks(app: "Dash") -> None:
@@ -15,7 +16,7 @@ def register_missing_values_callbacks(app: "Dash") -> None:
         Input("file-upload-status", "data"),  # Triggered when a file is uploaded
     )
     def update_missing_values_heatmap(file_uploaded):
-        """Generates a missing value heatmap (similar to sns.heatmap(df.isnull()))."""
+        """Generates a missing value heatmap (similar to sns.heatmap(df.isnull())) with caching."""
 
         if not file_uploaded:
             logger.warning("⚠️ No dataset loaded. Skipping missing values heatmap.")
@@ -26,6 +27,13 @@ def register_missing_values_callbacks(app: "Dash") -> None:
         if df is None:
             logger.error("❌ Dataset not found in memory despite file upload.")
             return go.Figure()
+
+        # ✅ Check cache before recalculating
+        cache_key = "missing_values_heatmap"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+        if cached_result:
+            logger.info("🔄 Loaded cached missing values heatmap.")
+            return cached_result  # Return cached result instantly
 
         # Convert missing values to binary matrix (1 = missing, 0 = present)
         missing_matrix = df.select(
@@ -56,5 +64,9 @@ def register_missing_values_callbacks(app: "Dash") -> None:
             },
             xaxis={"tickangle": -45},
         )
+
+        # ✅ Store result in cache
+        CACHE_MANAGER.save_cache(cache_key, df, fig)
+        logger.info("💾 Cached missing values heatmap for future use.")
 
         return fig

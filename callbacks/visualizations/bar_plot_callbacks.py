@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 
 
 def register_bar_plot_callbacks(app):
@@ -35,6 +36,14 @@ def register_bar_plot_callbacks(app):
             )
             return go.Figure()
 
+        # Generate cache key
+        cache_key = f"bar_plot_{selected_categorical}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_result:
+            logger.info(f"✅ Loaded cached bar plot for '{selected_categorical}'.")
+            return cached_result
+
         try:
             # Extract unique values and counts
             unique_values, counts = np.unique(
@@ -57,6 +66,10 @@ def register_bar_plot_callbacks(app):
             logger.info(
                 f"✅ Successfully generated bar plot for '{selected_categorical}'."
             )
+
+            # Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig_bar)
+
             return fig_bar
 
         except Exception as e:

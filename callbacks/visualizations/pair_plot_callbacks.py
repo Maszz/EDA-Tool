@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 
 
 def register_pair_plot_callbacks(app):
@@ -37,6 +38,14 @@ def register_pair_plot_callbacks(app):
             )
             return go.Figure()
 
+        # Generate cache key
+        cache_key = f"pair_plot_{'_'.join(selected_features)}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+
+        if cached_result:
+            logger.info(f"✅ Loaded cached pair plot for features: {selected_features}")
+            return cached_result
+
         try:
             # Convert selected features to NumPy array
             data = np.column_stack([df[col].to_numpy() for col in selected_features])
@@ -55,6 +64,10 @@ def register_pair_plot_callbacks(app):
             logger.info(
                 f"✅ Successfully generated pair plot for features: {selected_features}"
             )
+
+            # Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
+
             return fig
 
         except Exception as e:
