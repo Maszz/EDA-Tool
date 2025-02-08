@@ -1,25 +1,39 @@
 import dash
-from dash import Dash, html, dcc
-
-from callbacks.file_callbacks import register_file_callbacks
-from callbacks.head_table_callback import register_head_table_callbacks
-from callbacks.statistic_table_callback import register_stat_table_callbacks
-from callbacks.data_summary_callback import register_missing_values_callbacks
-from callbacks.feature_distribution_callbacks import (
-    register_feature_distribution_callbacks,
-)
-from callbacks.outlier_detection_callbacks import register_outlier_detection_callbacks
-from callbacks.correlation_heatmap_callbacks import (
-    register_correlation_heatmap_callbacks,
-)
-from callbacks.feature_importance_callbacks import register_feature_importance_callbacks
-from callbacks.missing_val_hist_calbacks import (
-    register_missing_values_heatmap_callbacks,
-)
-from utils.store import Store
 import dash_bootstrap_components as dbc
+from dash import Dash, html
+from flask import request
+
+from callbacks.feature_importances import (
+    register_feature_importance_plot_callbacks,
+    register_feature_importance_selector_callbacks,
+)
+from callbacks.file_callbacks import register_file_callbacks
+from callbacks.overviews import (
+    register_data_summary_callbacks,
+    register_duplicate_rows_callbacks,
+    register_file_summary_callbacks,
+    register_head_table_callbacks,
+    register_missing_values_callbacks,
+)
+from callbacks.statistics import (
+    register_correlation_heatmap_callbacks,
+    register_feature_distribution_callbacks,
+    register_outlier_detection_callbacks,
+    register_statistic_table_callbacks,
+    register_statistics_selector_callbacks,
+)
+from callbacks.visualizations import (
+    register_bar_plot_callbacks,
+    register_pair_plot_callbacks,
+    register_parallel_coordinates_callbacks,
+    register_pca_projection_callbacks,
+    register_scatter_plot_callbacks,
+    register_violin_plot_callbacks,
+    register_visualization_selector_callbacks,
+)
 from components.upload import upload_component
-from dash import Output, Input, callback
+from utils.logger_config import logger  # Import the logger
+from utils.store import Store
 
 
 class AppManager:
@@ -37,7 +51,14 @@ class AppManager:
         self.app = Dash(
             "App Name", use_pages=True, external_stylesheets=[dbc.themes.BOOTSTRAP]
         )
-        self.app.layout = self.create_layout()
+
+        # Log every incoming request
+        @self.app.server.before_request
+        def log_request():
+            logger.info(
+                f"📥 Incoming Request: {request.method} {request.path} from {request.remote_addr}"
+            )
+            self.app.layout = self.create_layout()
 
     def create_layout(self) -> "html.Div":
         """Define the layout with a modern sticky top navigation bar and embedded CSS."""
@@ -101,7 +122,7 @@ class AppManager:
                                         ),
                                         dbc.NavLink(
                                             "📈 Visualizations",
-                                            href="/visuals",
+                                            href="/visualization",
                                             active="exact",
                                             style={
                                                 "color": "white",
@@ -241,15 +262,45 @@ class AppManager:
     def register_callbacks(self) -> None:
         """Register all callbacks for the app."""
         register_file_callbacks(self.app)
+
+        # Register Overview Callbacks
         register_head_table_callbacks(self.app)
-        register_stat_table_callbacks(self.app)
+        register_duplicate_rows_callbacks(self.app)
+        register_file_summary_callbacks(self.app)
+        register_data_summary_callbacks(self.app)
         register_missing_values_callbacks(self.app)
+
+        # Register Statistics Callbacks
+        register_statistic_table_callbacks(self.app)
+        register_statistics_selector_callbacks(self.app)
+        register_correlation_heatmap_callbacks(self.app)
         register_feature_distribution_callbacks(self.app)
         register_outlier_detection_callbacks(self.app)
-        register_correlation_heatmap_callbacks(self.app)
-        register_feature_importance_callbacks(self.app)
-        register_missing_values_heatmap_callbacks(self.app)
+
+        # Register Visualization Callbacks
+        register_bar_plot_callbacks(self.app)
+        register_pair_plot_callbacks(self.app)
+        register_scatter_plot_callbacks(self.app)
+        register_violin_plot_callbacks(self.app)
+        register_visualization_selector_callbacks(self.app)
+        register_parallel_coordinates_callbacks(self.app)
+        register_pca_projection_callbacks(self.app)
+
+        # Register Feature Importance Callbacks
+        register_feature_importance_selector_callbacks(self.app)
+        register_feature_importance_plot_callbacks(self.app)
+
+        # register_head_table_callbacks(self.app)
+        # register_stat_table_callbacks(self.app)
+        # register_missing_values_callbacks(self.app)
+        # register_feature_distribution_callbacks(self.app)
+        # register_outlier_detection_callbacks(self.app)
+        # register_correlation_heatmap_callbacks(self.app)
+        # register_feature_importance_callbacks(self.app)
+        # register_missing_values_heatmap_callbacks(self.app)
+        # register_visualization_callbacks(self.app)
 
     def initialize_store(self) -> None:
         self.store = Store()
         self.store.register("data_frame", None)
+        self.store.register("filename", None)

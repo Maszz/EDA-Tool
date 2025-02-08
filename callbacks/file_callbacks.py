@@ -1,44 +1,43 @@
 import base64
 import io
-
 import polars as pl
-from dash import Dash, Input, Output, State
-
-from utils.store import Store
-from dash import html
 import dash
+from dash import Dash, Input, Output, State, html
+from utils.store import Store
+from utils.logger_config import logger  # Import logger
 
 
 def register_file_callbacks(app: "Dash") -> None:
     """Registers callbacks for reset and file upload handling."""
 
     @app.callback(
-        Output("reset-modal", "is_open"),  # Modal control
-        Output(
-            "reset-button", "disabled", allow_duplicate=True
-        ),  # Disable Clear Button
-        Output(
-            "file-info", "children", allow_duplicate=True
-        ),  # Update status in upload card
-        Output(
-            "file-upload-status", "data", allow_duplicate=True
-        ),  # Reset upload status trigger
+        [
+            Output("reset-modal", "is_open"),  # Modal control
+            Output(
+                "reset-button", "disabled", allow_duplicate=True
+            ),  # Disable Clear Button
+            Output(
+                "file-info", "children", allow_duplicate=True
+            ),  # Update status in upload card
+            Output(
+                "file-upload-status", "data", allow_duplicate=True
+            ),  # Reset upload status trigger
+        ],
         Input("reset-button", "n_clicks"),  # Trigger reset
         Input("confirm-reset", "n_clicks"),  # Confirm reset
         Input("cancel-reset", "n_clicks"),  # Cancel reset
         State("file-upload-status", "data"),  # Check if file uploaded
     )
     def handle_reset_and_modal(
-        reset_clicks: int,
-        confirm_reset_clicks: int,
-        cancel_reset_clicks: int,
-        file_uploaded: bool,
+        reset_clicks, confirm_reset_clicks, cancel_reset_clicks, file_uploaded
     ):
+        """Handles reset functionality, including modal popups for confirmation."""
         ctx = dash.ctx.triggered_id  # Identify which input triggered callback
 
         # If reset button is clicked, open the modal if a file is uploaded
         if ctx == "reset-button":
             if file_uploaded:
+                logger.info("🧹 Reset button clicked - Opening confirmation modal")
                 return (
                     True,
                     False,
@@ -54,23 +53,27 @@ def register_file_callbacks(app: "Dash") -> None:
 
         # If cancel-reset is clicked, close the modal without resetting
         if ctx == "cancel-reset":
+            logger.info("🚫 Reset cancelled by user")
             return False, dash.no_update, dash.no_update, dash.no_update
 
-        no_file_info = html.Div(
-            [
-                html.P(
-                    "📂 No file uploaded yet.",
-                    style={"fontWeight": "bold", "color": "#6c757d"},
-                ),
-                html.P(
-                    "⚠️ Please upload a CSV file to start analysis.",
-                    style={"color": "#dc3545"},
-                ),
-            ]
-        )
-        # If confirm-reset is clicked, clear the stored file and reset the status
+        # If confirm-reset is clicked, clear stored file and reset status
         if ctx == "confirm-reset":
+            logger.warning("⚠️ Reset confirmed - Clearing stored file")
             Store.set_static("data_frame", None)  # Clear stored file
+            Store.set_static("filename", None)  # Clear stored filename
+
+            no_file_info = html.Div(
+                [
+                    html.P(
+                        "📂 No file uploaded yet.",
+                        style={"fontWeight": "bold", "color": "#6c757d"},
+                    ),
+                    html.P(
+                        "⚠️ Please upload a CSV file to start analysis.",
+                        style={"color": "#dc3545"},
+                    ),
+                ]
+            )
 
             return (
                 False,
@@ -79,32 +82,54 @@ def register_file_callbacks(app: "Dash") -> None:
                 False,
             )  # Close modal, disable Clear button, reset status
 
-        # Default case: modal closed, button disabled, no status change
-        return False, True, no_file_info, False
+        return False, True, dash.no_update, False  # Default case
 
     @app.callback(
-        Output("file-upload-status", "data"),  # Hidden store to act as a trigger
-        Output("file-info", "children"),  # File info display
-        Output("file-upload", "contents"),  # Reset file upload contents
-        Output("reset-button", "disabled"),  # Enable/disable reset button
-        Input("file-upload", "contents"),  # File upload input
-        State("file-upload", "filename"),  # File name input
-        prevent_initial_call=True,
+        [
+            Output("file-upload-status", "data"),
+            Output("file-info", "children"),
+            Output("file-upload", "contents"),
+            Output("reset-button", "disabled"),
+        ],
+        Input("file-upload", "contents"),
+        State("file-upload", "filename"),
     )
-    def handle_file_upload(contents: str, filename: str):
-        """Handles file upload logic, stores file in memory, and manages reset button state."""
+    def handle_file_upload(contents, filename):
+        """Handles file upload, stores filename, and prevents unnecessary reloads."""
 
-        if contents is not None:
-            content_type, content_string = contents.split(",")
-            decoded = base64.b64decode(content_string)
+        # ✅ Check if a file is already stored
+        existing_df = Store.get_static("data_frame")
+        stored_filename = Store.get_static("filename")
 
+        if existing_df is not None and stored_filename:
+            logger.info(
+                f"📄 {stored_filename} (Already Loaded) - Preventing redundant upload."
+            )
+            file_info = html.Div(
+                [
+                    html.P(
+                        f"📄 {stored_filename} (Already Loaded)",
+                        style={"fontWeight": "bold"},
+                    ),
+                    html.P(
+                        "✅ File is already loaded in memory!", style={"color": "green"}
+                    ),
+                ]
+            )
+            return [True, file_info, None, False]  # Prevent redundant reloading
+
+        if contents:
             try:
-                if filename.endswith(".csv"):
-                    # Read and store the file in memory
-                    df = pl.read_csv(io.StringIO(decoded.decode("utf-8")))
-                    Store.set_static("data_frame", df)
+                content_type, content_string = contents.split(",")
+                decoded = base64.b64decode(content_string)
 
-                    # File info display
+                if filename.endswith(".csv"):
+                    df = pl.read_csv(io.StringIO(decoded.decode("utf-8")))  # Read CSV
+                    Store.set_static("data_frame", df)  # Store dataframe
+                    Store.set_static("filename", filename)  # Store filename ✅
+
+                    logger.info(f"✅ File uploaded: {filename}, Shape: {df.shape}")
+
                     file_info = html.Div(
                         [
                             html.P(
@@ -118,26 +143,19 @@ def register_file_callbacks(app: "Dash") -> None:
                         ]
                     )
 
-                    # Enable reset button when a file is successfully uploaded
-                    return True, file_info, None, False
+                    return [True, file_info, None, False]  # Enable Reset Button
 
-                # Unsupported file type
-                return False, "Unsupported file type.", None, True
+                logger.warning(f"❌ Unsupported file type uploaded: {filename}")
+                return [
+                    False,
+                    "❌ Unsupported file type.",
+                    None,
+                    True,
+                ]  # Unsupported file type
 
             except Exception as e:
-                # Handle errors gracefully
-                return False, f"Error: {e!s}", None, True
+                logger.error(f"❌ Error processing file {filename}: {e}")
+                return [False, f"❌ Error: {e}", None, True]  # Handle errors gracefully
 
-        # No file uploaded
-        return False, "No file uploaded yet.", None, True
-
-    # @app.callback(
-    #     Output("output-table", "children", allow_duplicate=True),
-    #     Input("reset-button", "n_clicks"),
-    # )
-    # def reset_button(n_clicks: int) -> str:
-    #     if n_clicks > 0:
-    #         Store.set_static("data_frame", None)
-    #         return "No file uploaded yet."
-
-    #     return "No file uploaded yet."
+        logger.info("📂 No file uploaded yet.")
+        return [False, "📂 No file uploaded yet.", None, True]  # No file uploaded

@@ -1,65 +1,75 @@
 import dash
-from dash import html, dcc
 import dash_bootstrap_components as dbc
+from dash import html, dcc
 
-dash.register_page(__name__, path="/visuals", title="Visualizations")
+dash.register_page(__name__, path="/visualization", title="Visualization")
 
 
 def layout(**kwargs: dict[str, str]) -> "html.Div":
     return dbc.Container(
         [
-            html.H1("📈 Visualizations", className="display-4 text-center"),
+            html.H1("📊 Data Visualization", className="display-4 text-center"),
             html.P(
-                "Explore feature distributions, outliers, and correlations.",
+                "Use various visualizations to explore relationships between features and understand your dataset better.",
                 className="lead text-muted text-center",
             ),
-            # Dropdown for Feature Selection
-            html.Div(
-                dcc.Dropdown(
-                    id="column-dropdown",
-                    placeholder="Select a feature for analysis...",
-                    className="dropdown-style",
-                ),
-                className="mb-4",
-            ),
-            # Feature Analysis Section
+            # Feature Relationships (Scatter Plot + Pair Plot in the Same Row)
             dbc.Row(
                 [
-                    # Feature Distribution
                     dbc.Col(
                         dbc.Card(
                             [
-                                dbc.CardHeader("Feature Distribution"),
-                                dbc.CardBody(dcc.Graph(id="distribution-plot")),
+                                dbc.CardHeader("Feature Relationships (Scatter Plot)"),
+                                dbc.CardBody(
+                                    [
+                                        html.P(
+                                            "Select two numerical features to visualize their relationship:",
+                                            className="text-muted",
+                                        ),
+                                        # X & Y Dropdowns (Stacked)
+                                        dcc.Dropdown(
+                                            id="feature-x-dropdown",
+                                            placeholder="Select a feature for X-axis...",
+                                            className="dropdown-style mb-2",
+                                        ),
+                                        dcc.Dropdown(
+                                            id="feature-y-dropdown",
+                                            placeholder="Select a feature for Y-axis...",
+                                            className="dropdown-style mb-3",
+                                        ),
+                                        dcc.Loading(
+                                            type="circle",
+                                            children=[dcc.Graph(id="scatter-plot")],
+                                        ),
+                                    ]
+                                ),
                             ],
                             className="shadow-sm",
                         ),
                         width=6,
                     ),
-                    # Outlier Detection
                     dbc.Col(
                         dbc.Card(
                             [
-                                dbc.CardHeader("Outlier Detection"),
+                                dbc.CardHeader(
+                                    "Pairwise Feature Interactions (Pair Plot)"
+                                ),
                                 dbc.CardBody(
                                     [
-                                        # Dropdown for Outlier Detection Algorithm
+                                        html.P(
+                                            "Select multiple numerical features to analyze their interactions using a pair plot:",
+                                            className="text-muted",
+                                        ),
                                         dcc.Dropdown(
-                                            id="outlier-algo-dropdown",
-                                            options=[
-                                                {"label": "Z-Score", "value": "zscore"},
-                                                {"label": "IQR", "value": "iqr"},
-                                                {"label": "DBSCAN", "value": "dbscan"},
-                                                {
-                                                    "label": "Isolation Forest",
-                                                    "value": "isolation_forest",
-                                                },
-                                            ],
-                                            value="zscore",
-                                            placeholder="Select an outlier detection algorithm...",
+                                            id="pairplot-features-dropdown",
+                                            multi=True,
+                                            placeholder="Select multiple features...",
                                             className="dropdown-style mb-3",
                                         ),
-                                        dcc.Graph(id="outlier-boxplot"),
+                                        dcc.Loading(
+                                            type="circle",
+                                            children=[dcc.Graph(id="pair-plot")],
+                                        ),
                                     ]
                                 ),
                             ],
@@ -70,45 +80,126 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                 ],
                 className="mb-4",
             ),
-            # Correlation Heatmap
+            # Categorical Feature Distributions (Bar Plot & Violin Plot)
+            dbc.Row(
+                dbc.Col(
+                    dbc.Card(
+                        [
+                            dbc.CardHeader("Categorical Feature Distributions"),
+                            dbc.CardBody(
+                                [
+                                    html.P(
+                                        "Select a categorical feature to explore its distribution using bar and violin plots:",
+                                        className="text-muted",
+                                    ),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                dcc.Dropdown(
+                                                    id="categorical-dropdown",
+                                                    placeholder="Select a categorical feature...",
+                                                    className="dropdown-style mb-3",
+                                                ),
+                                                width=6,
+                                            ),
+                                            dbc.Col(
+                                                dcc.Dropdown(
+                                                    id="numeric-dropdown",
+                                                    placeholder="Select a numerical feature...",
+                                                    className="dropdown-style mb-3",
+                                                ),
+                                                width=6,
+                                            ),
+                                        ]
+                                    ),
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                dcc.Loading(
+                                                    type="circle",
+                                                    children=[dcc.Graph(id="bar-plot")],
+                                                ),
+                                                width=6,
+                                            ),
+                                            dbc.Col(
+                                                dcc.Loading(
+                                                    type="circle",
+                                                    children=[
+                                                        dcc.Graph(id="violin-plot")
+                                                    ],
+                                                ),
+                                                width=6,
+                                            ),
+                                        ]
+                                    ),
+                                ]
+                            ),
+                        ],
+                        className="shadow-sm",
+                    ),
+                    width=12,
+                ),
+                className="mb-4",
+            ),
+            # Multivariate Analysis (Parallel Coordinates + PCA)
             dbc.Row(
                 [
                     dbc.Col(
                         dbc.Card(
                             [
-                                dbc.CardHeader("Feature Correlation Heatmap"),
+                                dbc.CardHeader(
+                                    "Multivariate Relationships (Parallel Coordinates)"
+                                ),
                                 dbc.CardBody(
                                     [
-                                        # Dropdown for Correlation Method
+                                        html.P(
+                                            "Select multiple numerical features to visualize how they relate to each other:",
+                                            className="text-muted",
+                                        ),
                                         dcc.Dropdown(
-                                            id="correlation-method-dropdown",
-                                            options=[
-                                                {
-                                                    "label": "Pearson",
-                                                    "value": "pearson",
-                                                },
-                                                {
-                                                    "label": "Spearman",
-                                                    "value": "spearman",
-                                                },
-                                                {
-                                                    "label": "Kendall",
-                                                    "value": "kendall",
-                                                },
-                                            ],
-                                            value="pearson",
-                                            placeholder="Select correlation method...",
+                                            id="multivariate-features-dropdown",
+                                            multi=True,
+                                            placeholder="Select multiple features...",
                                             className="dropdown-style mb-3",
                                         ),
-                                        dcc.Graph(id="correlation-heatmap"),
+                                        dcc.Loading(
+                                            type="circle",
+                                            children=[
+                                                dcc.Graph(id="parallel-coordinates")
+                                            ],
+                                        ),
                                     ]
                                 ),
                             ],
                             className="shadow-sm",
                         ),
-                        width=12,
+                        width=6,
                     ),
-                ]
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(
+                                    "Clustering Visualization (PCA 2D Projection)"
+                                ),
+                                dbc.CardBody(
+                                    [
+                                        html.P(
+                                            "The PCA plot shows a lower-dimensional projection of numerical features, useful for identifying patterns:",
+                                            className="text-muted",
+                                        ),
+                                        dcc.Loading(
+                                            type="circle",
+                                            children=[dcc.Graph(id="pca-plot")],
+                                        ),
+                                    ]
+                                ),
+                            ],
+                            className="shadow-sm",
+                        ),
+                        width=6,
+                    ),
+                ],
+                className="mb-4",
             ),
         ],
         fluid=True,

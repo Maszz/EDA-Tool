@@ -13,6 +13,47 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                 "Explore your dataset by checking the preview, summary, and missing values.",
                 className="lead text-muted text-center",
             ),
+            # File Summary (Number of Rows & Columns)
+            dbc.Row(
+                [
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(
+                                    "Dataset Summary", className="bg-info text-white"
+                                ),
+                                dbc.CardBody(
+                                    dcc.Loading(
+                                        type="circle",
+                                        children=[html.Div(id="file-summary")],
+                                    )
+                                ),
+                            ],
+                            className="shadow-sm",
+                        ),
+                        width=6,
+                    ),
+                    dbc.Col(
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(
+                                    "Duplicate Rows",
+                                    className="bg-secondary text-white",
+                                ),
+                                dbc.CardBody(
+                                    dcc.Loading(
+                                        type="circle",
+                                        children=[html.Div(id="duplicate-rows")],
+                                    )
+                                ),
+                            ],
+                            className="shadow-sm",
+                        ),
+                        width=6,
+                    ),
+                ],
+                className="justify-content-center mb-4",
+            ),
             # Data Preview (First 10 Records)
             dbc.Row(
                 [
@@ -23,7 +64,12 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                     "Top 10 Record Preview",
                                     className="bg-primary text-white",
                                 ),
-                                dbc.CardBody(html.Div(id="output-table")),
+                                dbc.CardBody(
+                                    dcc.Loading(
+                                        type="circle",
+                                        children=[html.Div(id="output-table")],
+                                    )
+                                ),
                             ],
                             className="shadow-sm",
                         ),
@@ -40,10 +86,15 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                         dbc.Card(
                             [
                                 dbc.CardHeader(
-                                    "Dataset Summary (Data Types & Missing Values)",
+                                    "Data Types & Missing Values",
                                     className="bg-dark text-white",
                                 ),
-                                dbc.CardBody(html.Div(id="data-summary")),
+                                dbc.CardBody(
+                                    dcc.Loading(
+                                        type="circle",
+                                        children=[html.Div(id="data-summary")],
+                                    )
+                                ),
                             ],
                             className="shadow-sm",
                         ),
@@ -60,7 +111,7 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                 dbc.CardBody(
                                     dcc.Loading(
                                         type="circle",
-                                        children=[dcc.Graph(id="missing-value-hist")],
+                                        children=[dcc.Graph(id="missing-value-heat")],
                                     )
                                 ),
                             ],
