@@ -1,10 +1,8 @@
-import pickle
-import json
-import pprint
 import argparse
+import json
+import pickle
+import pprint
 from pathlib import Path
-from typing import Optional
-
 
 CACHE_DIR = Path("./.cache")  # Default cache directory
 
@@ -44,7 +42,7 @@ def get_cache_files_by_hash(cache_hash: str):
     return index_file, data_files
 
 
-def dump_cache_by_hash(cache_hash: Optional[str], output_path: Optional[str] = None):
+def dump_cache_by_hash(cache_hash: str | None, output_path: str | None = None) -> None:
     """Dumps cache data for a given hash."""
     if not cache_hash:
         print("❌ Please specify a hash using --cache-hash")

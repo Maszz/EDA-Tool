@@ -1,16 +1,14 @@
-import logging
-import polars as pl
-from dash import dash_table
-import numpy as np
 import dash_bootstrap_components as dbc
-from dash import Input, Output, html
-from utils.store import Store
-from utils.logger_config import logger  # ✅ Import logger
-from utils.cache_manager import CACHE_MANAGER  # ✅ Import CacheManager
+import polars as pl
+from dash import Input, Output, dash_table, html
 from scipy.stats import entropy
 
+from utils.cache_manager import CACHE_MANAGER  # ✅ Import CacheManager
+from utils.logger_config import logger  # ✅ Import logger
+from utils.store import Store
 
-def register_data_summary_callbacks(app):
+
+def register_data_summary_callbacks(app) -> None:
     """Registers callbacks for displaying column data types & missing values in a single table."""
 
     @app.callback(
@@ -19,7 +17,6 @@ def register_data_summary_callbacks(app):
     )
     def render_data_summary(trigger):
         """Displays column statistics including size, dtype, unique values, and distribution info."""
-
         if not trigger:
             return "No dataset loaded."
 
@@ -152,7 +149,6 @@ def register_data_summary_callbacks(app):
     )
     def render_missing_values_summary(trigger):
         """Displays missing values summary using Polars with caching."""
-
         if not trigger:
             return "No dataset loaded."
 

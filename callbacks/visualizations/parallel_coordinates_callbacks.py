@@ -1,15 +1,15 @@
-import logging
-import polars as pl
 import plotly.express as px
 import plotly.graph_objects as go
+import polars as pl
 from dash import Input, Output
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
-from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
 
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
-def register_parallel_coordinates_callbacks(app):
+
+def register_parallel_coordinates_callbacks(app) -> None:
     """Registers the callback for Parallel Coordinates visualization."""
 
     @app.callback(
@@ -19,7 +19,6 @@ def register_parallel_coordinates_callbacks(app):
     )
     def update_parallel_coordinates(file_uploaded, selected_features):
         """Generates an optimized parallel coordinates plot for multivariate relationships."""
-
         if not file_uploaded:
             return go.Figure()
 

@@ -1,20 +1,20 @@
-import logging
-import polars as pl
+import lightgbm as lgb
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Input, Output, State
-from utils.store import Store
-from utils.logger_config import logger  # ✅ Import Logger
-from utils.cache_manager import CACHE_MANAGER  # ✅ Import CacheManager
-import lightgbm as lgb
+import polars as pl
 from boruta import BorutaPy
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from dash import Input, Output, State
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder
-import numpy as np
+
+from utils.cache_manager import CACHE_MANAGER  # ✅ Import CacheManager
+from utils.logger_config import logger  # ✅ Import Logger
+from utils.store import Store
 
 
-def register_feature_importance_plot_callbacks(app):
+def register_feature_importance_plot_callbacks(app) -> None:
     """Registers callbacks for computing and visualizing feature importance with caching."""
 
     @app.callback(
@@ -72,7 +72,6 @@ def register_feature_importance_plot_callbacks(app):
         target_column, importance_method, num_top_features, file_uploaded
     ):
         """Computes and displays feature importance using LightGBM or Boruta with caching."""
-
         # ✅ Check if a file is uploaded
         if not file_uploaded:
             return _log_and_return_empty("⚠️ No dataset loaded. Please upload a file.")
@@ -137,7 +136,7 @@ def register_feature_importance_plot_callbacks(app):
                 importances = model.feature_importances_
 
             elif importance_method == "boruta":
-                logger.info(f"⚙️ Running Boruta Feature Selection...")
+                logger.info("⚙️ Running Boruta Feature Selection...")
                 rf_model = (
                     RandomForestRegressor(n_jobs=-1, random_state=42)
                     if df[target_column].dtype != pl.Utf8
@@ -176,12 +175,12 @@ def register_feature_importance_plot_callbacks(app):
 
             # ✅ Save to Cache
             CACHE_MANAGER.save_cache(cache_key, df, (fig, final_message))
-            logger.info(f"💾 Feature importance cached.")
+            logger.info("💾 Feature importance cached.")
 
             return fig, final_message
 
         except Exception as e:
-            return _log_and_return_empty(f"❌ Error: {str(e)}")
+            return _log_and_return_empty(f"❌ Error: {e!s}")
 
 
 def _log_and_return_empty(message: str):

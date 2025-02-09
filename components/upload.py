@@ -1,11 +1,9 @@
-import dash
-from dash import dcc, html, callback, Output, Input, State
 import dash_bootstrap_components as dbc
+from dash import dcc, html
 
 
 def upload_component() -> "html.Div":
     """File upload component with reset confirmation."""
-
     return dbc.Card(
         [
             # Hidden store to track upload status

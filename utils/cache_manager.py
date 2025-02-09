@@ -1,9 +1,11 @@
-import os
 import hashlib
-import polars as pl
+import os
 import pickle
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
+
+import polars as pl
+
 from utils.logger_config import logger  # Import logger
 
 
@@ -11,7 +13,7 @@ class CacheManager:
     """Handles in-memory and file-based caching with file chunking for large datasets."""
 
     CACHE_DIR = Path("./.cache")  # Persistent cache directory
-    MEMORY_CACHE: Dict[str, Any] = {}  # In-memory cache
+    MEMORY_CACHE: dict[str, Any] = {}  # In-memory cache
     MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB per cache file
     ENABLE_CACHE = os.environ.get("ENABLE_CACHE", "true").lower() == "true"
 
@@ -76,7 +78,7 @@ class CacheManager:
 
         return None  # Cache miss
 
-    def save_cache(self, cache_key: str, df: pl.DataFrame, data: Any):
+    def save_cache(self, cache_key: str, df: pl.DataFrame, data: Any) -> None:
         """Stores computed results in memory and file cache with file size management."""
         if not self.ENABLE_CACHE:
             logger.info(f"🔧 Cache disabled. Skipping save for {cache_key}.")
@@ -163,10 +165,10 @@ class CacheManager:
 
         logger.info(f"💾 Cache stored for {cache_key} in Part {part_number}")
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         """Clears all cached data from memory and disk."""
         if not self.ENABLE_CACHE:
-            logger.info(f"🔧 Cache disabled. Skipping clear operation.")
+            logger.info("🔧 Cache disabled. Skipping clear operation.")
             return
 
         self.MEMORY_CACHE.clear()

@@ -1,10 +1,12 @@
 import base64
 import io
-import polars as pl
+
 import dash
+import polars as pl
 from dash import Dash, Input, Output, State, html
-from utils.store import Store
+
 from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
 def register_file_callbacks(app: "Dash") -> None:
@@ -96,7 +98,6 @@ def register_file_callbacks(app: "Dash") -> None:
     )
     def handle_file_upload(contents, filename):
         """Handles file upload, stores filename, and prevents unnecessary reloads."""
-
         # Check if a file is already loaded
         existing_df = Store.get_static("data_frame")
         stored_filename = Store.get_static("filename")

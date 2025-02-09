@@ -1,5 +1,6 @@
-from .logger_config import logger
 import plotly.graph_objects as go
+
+from .logger_config import logger
 
 
 def _log_and_return_empty(message: str):

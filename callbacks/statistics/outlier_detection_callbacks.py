@@ -1,32 +1,22 @@
-import logging
-import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
-import polars as pl
-from dash import Dash, Input, Output, State
-from sklearn.ensemble import IsolationForest
-from sklearn.cluster import DBSCAN
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
-from utils.cache_manager import CACHE_MANAGER  # Import cache manager
-from plotly_resampler import FigureResampler
-
-
-def register_outlier_detection_callbacks(app: "Dash") -> None:
-    """Registers callbacks for outlier detection using multiple algorithms."""
-
-    import logging
-
-
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import polars as pl
 from dash import Dash, Input, Output
 from plotly_resampler import FigureResampler
+from sklearn.cluster import DBSCAN
+from sklearn.ensemble import IsolationForest
+
+from utils.cache_manager import CACHE_MANAGER  # Import cache manager
+from utils.logger_config import logger  # Import logger
 from utils.store import Store
-from utils.logger_config import logger
-from utils.cache_manager import CACHE_MANAGER
+
+
+def register_outlier_detection_callbacks(app: "Dash") -> None:
+    """Registers callbacks for outlier detection using multiple algorithms."""
+
+
+
 
 
 def register_outlier_detection_callbacks(app: "Dash") -> None:
@@ -40,11 +30,11 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
         Input("file-upload-status", "data"),  # ✅ Now triggers on file upload
     )
     def update_outlier_boxplot(column_name, algorithm, file_uploaded):
-        """Creates two figures:
-        1️⃣ A resampled boxplot (optimized for large datasets)
-        2️⃣ A separate scatter plot using OpenGL (`Scattergl`) to display outliers
         """
-
+        Creates two figures:
+        1️⃣ A resampled boxplot (optimized for large datasets)
+        2️⃣ A separate scatter plot using OpenGL (`Scattergl`) to display outliers.
+        """
         if not file_uploaded:
             return go.Figure(), go.Figure()  # No unnecessary logging
 
@@ -96,7 +86,7 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
                     x=["Outliers"] * np.sum(outliers),
                     y=column_data_clean,
                     mode="markers",
-                    marker=dict(color="blue", size=6, opacity=0),
+                    marker={"color": "blue", "size": 6, "opacity": 0},
                     name="All Data Points",
                 )
             )
@@ -107,7 +97,7 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
                     x=["Outliers"] * np.sum(outliers),
                     y=column_data_clean[outliers],
                     mode="markers",
-                    marker=dict(color="red", size=8, opacity=1),
+                    marker={"color": "red", "size": 8, "opacity": 1},
                     name="Outliers",
                 )
             )
@@ -117,14 +107,14 @@ def register_outlier_detection_callbacks(app: "Dash") -> None:
                 yaxis_title=column_name,
                 title=f"Outlier - {column_name} ({algorithm.capitalize()})",
                 showlegend=False,  # ✅ Hide legend for minimal display
-                xaxis=dict(visible=False),  # ✅ Hide x-axis
-                yaxis=dict(
-                    visible=False,  # ✅ Hide y-axis
+                xaxis={"visible": False},  # ✅ Hide x-axis
+                yaxis={
+                    "visible": False,  # ✅ Hide y-axis
                     # showgrid=False,  # ✅ Remove grid lines
                     # zeroline=False,  # ✅ Remove zero line
                     # title="",  # ✅ No y-axis title for minimalism
                     # matches="y",  # ✅ Ensures y-scale matches first figure (boxplot)
-                ),
+                },
                 # margin=dict(r=200),  # ✅ Minimal margin to keep it compact
                 # width=250,  # ✅ Adjusts figure width to be more narrow
                 # height=300,  # ✅ Keeps height aligned with the boxplot

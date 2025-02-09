@@ -1,14 +1,13 @@
-import logging
 import numpy as np
 import plotly.graph_objects as go
 import polars as pl
-from dash import Dash, Input, Output
+from dash import Dash, Input, Output, dash_table
 from plotly_resampler import FigureResampler
-from utils.store import Store
-from utils.logger_config import logger
+from scipy.stats import gaussian_kde, kurtosis, skew
+
 from utils.cache_manager import CACHE_MANAGER
-from scipy.stats import skew, kurtosis, gaussian_kde
-from dash import dash_table
+from utils.logger_config import logger
+from utils.store import Store
 
 
 def register_feature_distribution_callbacks(app: "Dash") -> None:
@@ -90,7 +89,7 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
                     nbinsx=30,
                     name="Histogram",
                     opacity=0.7,
-                    marker=dict(color="blue"),
+                    marker={"color": "blue"},
                 )
             )
 
@@ -104,7 +103,7 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
                     / 30,  # ✅ Smarter scaling
                     mode="lines",
                     name="KDE Density",
-                    line=dict(color="red", width=2),
+                    line={"color": "red", "width": 2},
                 )
             )
 

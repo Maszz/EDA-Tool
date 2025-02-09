@@ -1,17 +1,18 @@
 import logging
-import sys
 import os
+import sys
+from pathlib import Path
 
 # ✅ Read Logging Config from Environment Variables
 ENABLE_LOGGING = os.getenv("ENABLE_LOGGING", "True").lower() == "true"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
 
 # ✅ Ensure the logs directory exists
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
+LOG_DIR = Path("logs")
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # ✅ Define log file
-LOG_FILE = os.path.join(LOG_DIR, "app.log")
+LOG_FILE = LOG_DIR / "app.log"
 
 # ✅ Create a logger
 logger = logging.getLogger("dash_app")
@@ -41,7 +42,7 @@ if ENABLE_LOGGING:
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
 
-    logger.info(f"✅ Logging Enabled | Level: {LOG_LEVEL}")
+    logger.info("✅ Logging Enabled | Level: %s", LOG_LEVEL)
 
 else:
     # ✅ Disable logging if ENABLE_LOGGING is False

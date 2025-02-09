@@ -1,8 +1,9 @@
 import polars as pl
 from dash import Dash, Input, Output, html
-from utils.store import Store
-from utils.logger_config import logger  # Import the logger
+
 from utils.cache_manager import CACHE_MANAGER  # Import cache manager
+from utils.logger_config import logger  # Import the logger
+from utils.store import Store
 
 
 def register_file_summary_callbacks(app: "Dash") -> None:

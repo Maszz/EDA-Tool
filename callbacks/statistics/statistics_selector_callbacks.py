@@ -1,11 +1,11 @@
-import logging
 import polars as pl
 from dash import Input, Output
-from utils.store import Store
+
 from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
-def register_statistics_selector_callbacks(app):
+def register_statistics_selector_callbacks(app) -> None:
     """Registers callbacks for updating user selection components in the Statistics tab."""
 
     @app.callback(

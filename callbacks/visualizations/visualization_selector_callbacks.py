@@ -1,10 +1,11 @@
 import polars as pl
 from dash import Input, Output
-from utils.store import Store
+
 from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
-def register_visualization_selector_callbacks(app):
+def register_visualization_selector_callbacks(app) -> None:
     """Registers callbacks for updating user selection components in the Visualization tab."""
 
     @app.callback(
@@ -26,7 +27,6 @@ def register_visualization_selector_callbacks(app):
     )
     def update_visualization_selectors(file_uploaded):
         """Updates dropdowns with dataset feature lists and default selections."""
-
         if not file_uploaded:
             logger.warning("⚠️ No dataset uploaded. Clearing dropdowns.")
             return ([], None, [], None, [], [], [], None, [], [], [], None)

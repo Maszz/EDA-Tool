@@ -53,7 +53,7 @@ class AppManager:
 
         # Log every incoming request
         @self.app.server.before_request
-        def log_request():
+        def log_request() -> None:
             logger.info(
                 f"📥 Incoming Request: {request.method} {request.path} from {request.remote_addr}"
             )

@@ -1,14 +1,14 @@
-import logging
-import polars as pl
 import plotly.express as px
 import plotly.graph_objects as go
+import polars as pl
 from dash import Input, Output
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
+
 from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
-def register_bar_plot_callbacks(app):
+def register_bar_plot_callbacks(app) -> None:
     """Registers callbacks for the Bar Plot visualization."""
 
     @app.callback(
@@ -18,7 +18,6 @@ def register_bar_plot_callbacks(app):
     )
     def update_bar_plot(file_uploaded, selected_categorical):
         """Generates an optimized bar plot for categorical feature distribution."""
-
         if not file_uploaded:
             return go.Figure()
 

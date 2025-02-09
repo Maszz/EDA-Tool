@@ -1,13 +1,12 @@
-import logging
 import polars as pl
-from dash import Input, Output, html, dash_table
-import dash_bootstrap_components as dbc
-from utils.store import Store
-from utils.logger_config import logger
+from dash import Input, Output, dash_table
+
 from utils.cache_manager import CACHE_MANAGER
+from utils.logger_config import logger
+from utils.store import Store
 
 
-def register_statistic_table_callbacks(app):
+def register_statistic_table_callbacks(app) -> None:
     """Registers callbacks for dataset descriptive statistics."""
 
     @app.callback(
@@ -16,7 +15,6 @@ def register_statistic_table_callbacks(app):
     )
     def update_stats_table(file_uploaded):
         """Computes and displays dataset descriptive statistics."""
-
         if not file_uploaded:
             return "No dataset loaded."
 

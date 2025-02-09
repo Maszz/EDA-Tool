@@ -1,15 +1,15 @@
-import logging
-import polars as pl
 import plotly.graph_objects as go
+import polars as pl
 from dash import Input, Output
-from sklearn.decomposition import PCA
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
-from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
+from sklearn.decomposition import PCA
+
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
-def register_pca_projection_callbacks(app):
+def register_pca_projection_callbacks(app) -> None:
     """Registers the callback for PCA 2D Projection visualization."""
 
     @app.callback(
@@ -18,7 +18,6 @@ def register_pca_projection_callbacks(app):
     )
     def update_pca_plot(file_uploaded):
         """Generates an optimized PCA 2D Projection with WebGL and resampling."""
-
         if not file_uploaded:
             return go.Figure()
 
@@ -64,7 +63,7 @@ def register_pca_projection_callbacks(app):
                     x=pca_x,
                     y=pca_y,
                     mode="markers",
-                    marker=dict(color="blue", size=5, opacity=0.7),
+                    marker={"color": "blue", "size": 5, "opacity": 0.7},
                     name="PCA Projection",
                 )
             )

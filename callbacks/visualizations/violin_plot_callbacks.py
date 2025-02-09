@@ -1,16 +1,14 @@
-import logging
-import polars as pl
-import plotly.express as px
 import plotly.graph_objects as go
+import polars as pl
 from dash import Input, Output
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
-from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
-import dash
+
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
-def register_violin_plot_callbacks(app):
+def register_violin_plot_callbacks(app) -> None:
     """Registers callbacks for the Violin Plot visualization with caching and resampling."""
 
     @app.callback(
@@ -21,7 +19,6 @@ def register_violin_plot_callbacks(app):
     )
     def update_violin_plot(file_uploaded, categorical_feature, numerical_feature):
         """Generates an optimized violin plot for a numerical feature grouped by a categorical feature."""
-
         if not file_uploaded:
             return _log_and_return_empty("⚠️ No dataset uploaded. Clearing Violin plot.")
 
@@ -81,7 +78,7 @@ def register_violin_plot_callbacks(app):
                 template="plotly_white",
             )
 
-            logger.info(f"✅ Successfully generated resampled Violin plot.")
+            logger.info("✅ Successfully generated resampled Violin plot.")
 
             # ✅ Store in cache
             CACHE_MANAGER.save_cache(cache_key, df, fig)

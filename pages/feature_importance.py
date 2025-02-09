@@ -1,6 +1,6 @@
 import dash
-from dash import html, dcc
 import dash_bootstrap_components as dbc
+from dash import dcc, html
 
 dash.register_page(__name__, path="/feature-importance", title="Feature Importance")
 

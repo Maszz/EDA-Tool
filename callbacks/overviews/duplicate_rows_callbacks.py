@@ -1,10 +1,11 @@
+
 import dash_bootstrap_components as dbc
 import polars as pl
-import logging
 from dash import Dash, Input, Output, dash_table, html
-from utils.store import Store
-from utils.logger_config import logger  # Import the logger
+
 from utils.cache_manager import CACHE_MANAGER  # Import the cache manager
+from utils.logger_config import logger  # Import the logger
+from utils.store import Store
 
 
 def register_duplicate_rows_callbacks(app: "Dash") -> None:

@@ -1,15 +1,15 @@
-import logging
-import polars as pl
 import plotly.express as px
 import plotly.graph_objects as go
+import polars as pl
 from dash import Input, Output
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
-from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
 
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
-def register_pair_plot_callbacks(app):
+
+def register_pair_plot_callbacks(app) -> None:
     """Registers callbacks for the Pair Plot visualization."""
 
     @app.callback(
@@ -19,7 +19,6 @@ def register_pair_plot_callbacks(app):
     )
     def update_pair_plot(file_uploaded, selected_features):
         """Generates a resampled pair plot for selected numerical features using Polars."""
-
         if not file_uploaded:
             return go.Figure()
 

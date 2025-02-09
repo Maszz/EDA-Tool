@@ -1,10 +1,10 @@
-import logging
 import dash_bootstrap_components as dbc
 import polars as pl
-from dash import Dash, Input, Output, dash_table, html
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
+from dash import Dash, Input, Output, dash_table
+
 from utils.cache_manager import CACHE_MANAGER  # Import cache manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
 def register_head_table_callbacks(app: "Dash") -> None:

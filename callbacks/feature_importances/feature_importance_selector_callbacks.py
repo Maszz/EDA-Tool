@@ -1,10 +1,11 @@
 import polars as pl
 from dash import Input, Output, ctx
-from utils.store import Store
+
 from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
-def register_feature_importance_selector_callbacks(app):
+def register_feature_importance_selector_callbacks(app) -> None:
     """Registers callbacks for selecting target column and updating training status."""
 
     @app.callback(

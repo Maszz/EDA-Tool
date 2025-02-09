@@ -1,14 +1,14 @@
-import logging
-import polars as pl
 import plotly.graph_objects as go
+import polars as pl
 from dash import Input, Output
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
-from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
 from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
 
+from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
-def register_scatter_plot_callbacks(app):
+
+def register_scatter_plot_callbacks(app) -> None:
     """Registers callbacks for the Scatter Plot visualization."""
 
     @app.callback(
@@ -19,7 +19,6 @@ def register_scatter_plot_callbacks(app):
     )
     def update_scatter_plot(file_uploaded, feature_x, feature_y):
         """Generates an optimized Scatter plot with WebGL and resampling, supporting same X and Y columns."""
-
         if not file_uploaded:
             return go.Figure()
 
@@ -62,7 +61,7 @@ def register_scatter_plot_callbacks(app):
                     x=x_data,
                     y=y_data,
                     mode="markers",
-                    marker=dict(color="blue", size=5, opacity=0.7),
+                    marker={"color": "blue", "size": 5, "opacity": 0.7},
                     name=f"{feature_x} vs {feature_y.replace('_y', '')}",
                 )
             )

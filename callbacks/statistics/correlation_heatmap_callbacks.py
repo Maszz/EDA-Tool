@@ -1,15 +1,13 @@
-import logging
 import numpy as np
-import polars as pl
 import plotly.express as px
 import plotly.graph_objects as go
+import polars as pl
 from dash import Dash, Input, Output
-from scipy.stats import rankdata, kendalltau, spearmanr
-from utils.store import Store
-from utils.logger_config import logger  # Import logger
+from scipy.stats import rankdata
+
 from utils.cache_manager import CACHE_MANAGER  # Import cache manager
-from plotly_resampler import FigureResampler
-from joblib import Parallel, delayed
+from utils.logger_config import logger  # Import logger
+from utils.store import Store
 
 
 def register_correlation_heatmap_callbacks(app: "Dash") -> None:
@@ -22,7 +20,6 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
     )
     def update_correlation_heatmap(file_uploaded, method):
         """Creates a correlation heatmap for numerical features with NaN handling based on the selected method."""
-
         if not file_uploaded:
             return go.Figure()  # No dataset available
 
