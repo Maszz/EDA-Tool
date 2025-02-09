@@ -1,16 +1,17 @@
 import logging
 import polars as pl
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
 from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
+import dash
 
 
 def register_violin_plot_callbacks(app):
-    """Registers callbacks for the Violin Plot visualization with caching."""
+    """Registers callbacks for the Violin Plot visualization with caching and resampling."""
 
     @app.callback(
         Output("violin-plot", "figure"),
@@ -19,17 +20,14 @@ def register_violin_plot_callbacks(app):
         Input("numeric-dropdown", "value"),
     )
     def update_violin_plot(file_uploaded, categorical_feature, numerical_feature):
-        """Generates a violin plot for a numerical feature grouped by a categorical feature with caching and error handling."""
+        """Generates an optimized violin plot for a numerical feature grouped by a categorical feature."""
 
         if not file_uploaded:
             return _log_and_return_empty("⚠️ No dataset uploaded. Clearing Violin plot.")
 
         df: pl.DataFrame = Store.get_static("data_frame")
-
         if df is None:
-            return _log_and_return_empty(
-                "❌ Dataset not found in memory despite file upload."
-            )
+            return _log_and_return_empty("❌ Dataset not found in memory.")
 
         if not categorical_feature or not numerical_feature:
             return _log_and_return_empty("⚠️ Missing feature selection for Violin plot.")
@@ -39,46 +37,53 @@ def register_violin_plot_callbacks(app):
                 f"❌ Selected features {categorical_feature} or {numerical_feature} not found in dataset."
             )
 
-        # Generate a cache key based on dataset hash and selected features
-        cache_key = f"violin_{categorical_feature}_{numerical_feature}"
-        cached_plot = CACHE_MANAGER.load_cache(cache_key, df)
+        # ✅ Handle duplicate column names by renaming the numerical column
+        if categorical_feature == numerical_feature:
+            numerical_feature_alias = f"{numerical_feature}_value"
+            df = df.with_columns(df[numerical_feature].alias(numerical_feature_alias))
+            numerical_feature = numerical_feature_alias  # Use new alias for processing
 
-        if cached_plot:
-            logger.info(
-                f"✅ Loaded cached Violin plot for {numerical_feature} by {categorical_feature}."
-            )
-            return cached_plot
+        # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
+        cache_key = f"violin_{categorical_feature}_{numerical_feature}_{df.shape}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+        if cached_result:
+            return cached_result  # Return cached result
 
         try:
-            # Extract selected features and drop missing values
+            # ✅ Extract selected features and drop missing values
             clean_df = df.select([categorical_feature, numerical_feature]).drop_nulls()
 
-            # Ensure sufficient data points
+            # ✅ Ensure sufficient data points
             if clean_df.height < 2:
                 return _log_and_return_empty(
                     "⚠️ Insufficient valid data points for Violin plot."
                 )
 
-            # Convert Polars DataFrame to dictionary format for Plotly
-            fig = px.violin(
-                clean_df.to_dicts(),
-                x=categorical_feature,
-                y=numerical_feature,
-                box=True,
-                points="all",
-                title=f"Violin Plot: {numerical_feature} by {categorical_feature}",
-                labels={
-                    categorical_feature: "Category",
-                    numerical_feature: "Value",
-                },
+            # ✅ Create Resampler Figure
+            fig = FigureResampler(go.Figure())
+
+            # ✅ Add violin plot trace
+            fig.add_trace(
+                go.Violin(
+                    x=clean_df[categorical_feature].to_numpy(),
+                    y=clean_df[numerical_feature].to_numpy(),
+                    box_visible=True,
+                    meanline_visible=True,
+                    points="all",
+                    name=f"{numerical_feature} by {categorical_feature}",
+                )
+            )
+
+            fig.update_layout(
+                title=f"Violin Plot: {numerical_feature} by {categorical_feature} (Resampled)",
+                xaxis_title=categorical_feature,
+                yaxis_title=numerical_feature,
                 template="plotly_white",
             )
 
-            logger.info(
-                f"✅ Successfully generated Violin plot for {numerical_feature} grouped by {categorical_feature}."
-            )
+            logger.info(f"✅ Successfully generated resampled Violin plot.")
 
-            # Store the generated plot in cache
+            # ✅ Store in cache
             CACHE_MANAGER.save_cache(cache_key, df, fig)
 
             return fig

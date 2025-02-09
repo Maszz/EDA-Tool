@@ -9,100 +9,149 @@ from sklearn.cluster import DBSCAN
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
 from utils.cache_manager import CACHE_MANAGER  # Import cache manager
+from plotly_resampler import FigureResampler
 
 
 def register_outlier_detection_callbacks(app: "Dash") -> None:
     """Registers callbacks for outlier detection using multiple algorithms."""
 
+    import logging
+
+
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import polars as pl
+from dash import Dash, Input, Output
+from plotly_resampler import FigureResampler
+from utils.store import Store
+from utils.logger_config import logger
+from utils.cache_manager import CACHE_MANAGER
+
+
+def register_outlier_detection_callbacks(app: "Dash") -> None:
+    """Registers callbacks for detecting outliers using different algorithms."""
+
     @app.callback(
-        Output("outlier-boxplot", "figure"),  # Update outlier visualization
-        Input("column-dropdown", "value"),  # Selected feature
-        Input("outlier-algo-dropdown", "value"),  # Selected algorithm
-        State("file-upload-status", "data"),  # Ensure file is uploaded
+        Output("outlier-boxplot", "figure"),  # ✅ Boxplot uses FigureResampler
+        Output("outlier-scatter", "figure"),  # ✅ Scatter uses OpenGL (Scattergl)
+        Input("column-dropdown", "value"),
+        Input("outlier-algo-dropdown", "value"),
+        Input("file-upload-status", "data"),  # ✅ Now triggers on file upload
     )
     def update_outlier_boxplot(column_name, algorithm, file_uploaded):
-        """Creates a boxplot for detecting outliers using the selected algorithm, with missing value handling."""
+        """Creates two figures:
+        1️⃣ A resampled boxplot (optimized for large datasets)
+        2️⃣ A separate scatter plot using OpenGL (`Scattergl`) to display outliers
+        """
+
         if not file_uploaded:
-            logger.warning("⚠️ No dataset uploaded. Skipping outlier detection.")
-            return go.Figure()
+            return go.Figure(), go.Figure()  # No unnecessary logging
 
         df: pl.DataFrame = Store.get_static("data_frame")
-
-        if df is None:
-            logger.error("❌ Dataset not found in memory despite file upload.")
-            return go.Figure()
-
-        if not column_name:
-            logger.warning("⚠️ No column selected for outlier detection.")
-            return go.Figure()
-
-        if column_name not in df.columns:
-            logger.error(f"❌ Column '{column_name}' not found in dataset.")
-            return go.Figure()
+        if df is None or column_name not in df.columns:
+            return go.Figure(), go.Figure()  # Handle missing data gracefully
 
         # Generate cache key
         cache_key = f"outlier_detection_{column_name}_{algorithm}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
-
         if cached_result:
-            logger.info(
-                f"✅ Loaded cached outlier detection for '{column_name}' using {algorithm}."
-            )
-            return cached_result
-
-        logger.info(f"🔍 Detecting outliers in '{column_name}' using {algorithm}.")
+            return cached_result  # Return cached results if available
 
         try:
-            # Convert column to NumPy and drop NaN values
-            column_data = np.array(df[column_name].drop_nulls().to_list())
+            logger.info(f"🔍 Detecting outliers in '{column_name}' using {algorithm}.")
 
-            if column_data.size == 0:
-                logger.warning("⚠️ No valid numeric data available after removing NaNs.")
-                return go.Figure()
+            # Convert column to NumPy and drop NaNs
+            column_data = df[column_name].to_numpy()
+            column_data_clean = column_data[~np.isnan(column_data)]  # Remove NaNs
 
-            # Detect outliers based on selected algorithm
-            if algorithm == "zscore":
-                outliers = detect_outliers_zscore(column_data)
-            elif algorithm == "iqr":
-                outliers = detect_outliers_iqr(column_data)
-            elif algorithm == "dbscan":
-                outliers = detect_outliers_dbscan(column_data)
-            elif algorithm == "isolation_forest":
-                outliers = detect_outliers_isolation_forest(column_data)
-            else:
-                logger.error(f"❌ Unsupported algorithm: {algorithm}")
-                return go.Figure()
+            if column_data_clean.size == 0:
+                return (
+                    go.Figure(),
+                    go.Figure(),
+                )  # No valid data, avoid logging redundant warnings
 
-            logger.info(
-                f"✅ Outlier detection completed for '{column_name}' using {algorithm}."
+            # Detect outliers
+            outliers = detect_outliers(column_data_clean, algorithm)
+            if outliers is None:
+                return go.Figure(), go.Figure()  # Return empty if unsupported algorithm
+
+            ### **1️⃣ First Figure: Boxplot (Resampled for Performance)**
+            fig_box = FigureResampler(
+                px.box(
+                    y=column_data_clean,
+                    points="all",
+                    title=f"Outlier Detection (Optimized) - {column_name} ({algorithm.capitalize()})",
+                    labels={"y": column_name},
+                    template="plotly_white",
+                )
             )
 
-            # Create boxplot with outliers highlighted
-            fig = px.box(
-                y=column_data,
-                points="all",  # Show all data points
-                title=f"Outlier Detection in {column_name} ({algorithm.capitalize()})",
-                labels={"y": column_name},
+            ### **2️⃣ Second Figure: Scatter Plot (OpenGL)**
+            fig_scatter = go.Figure()
+
+            # **Plot all data points using OpenGL (`Scattergl`)**
+            fig_scatter.add_trace(
+                go.Scattergl(
+                    x=["Outliers"] * np.sum(outliers),
+                    y=column_data_clean,
+                    mode="markers",
+                    marker=dict(color="blue", size=6, opacity=0),
+                    name="All Data Points",
+                )
+            )
+
+            # **Highlight Outliers using OpenGL (`Scattergl`)**
+            fig_scatter.add_trace(
+                go.Scattergl(
+                    x=["Outliers"] * np.sum(outliers),
+                    y=column_data_clean[outliers],
+                    mode="markers",
+                    marker=dict(color="red", size=8, opacity=1),
+                    name="Outliers",
+                )
+            )
+
+            fig_scatter.update_layout(
                 template="plotly_white",
-            )
-
-            # Highlight detected outliers
-            fig.add_scatter(
-                x=["Outliers"] * np.sum(outliers),
-                y=column_data[outliers],  # Outlier values
-                mode="markers",
-                marker={"color": "red", "size": 8},
-                name="Outliers",
+                yaxis_title=column_name,
+                title=f"Outlier - {column_name} ({algorithm.capitalize()})",
+                showlegend=False,  # ✅ Hide legend for minimal display
+                xaxis=dict(visible=False),  # ✅ Hide x-axis
+                yaxis=dict(
+                    visible=False,  # ✅ Hide y-axis
+                    # showgrid=False,  # ✅ Remove grid lines
+                    # zeroline=False,  # ✅ Remove zero line
+                    # title="",  # ✅ No y-axis title for minimalism
+                    # matches="y",  # ✅ Ensures y-scale matches first figure (boxplot)
+                ),
+                # margin=dict(r=200),  # ✅ Minimal margin to keep it compact
+                # width=250,  # ✅ Adjusts figure width to be more narrow
+                # height=300,  # ✅ Keeps height aligned with the boxplot
             )
 
             # Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-
-            return fig
+            CACHE_MANAGER.save_cache(cache_key, df, (fig_box, fig_scatter))
+            return fig_box, fig_scatter
 
         except Exception as e:
             logger.error(f"❌ Error during outlier detection: {e}")
-            return go.Figure()  # Return empty figure
+            return go.Figure(), go.Figure()  # Return empty figures
+
+
+def detect_outliers(data: np.ndarray, algorithm: str):
+    """Detects outliers using the selected algorithm."""
+    if algorithm == "zscore":
+        return detect_outliers_zscore(data)
+    elif algorithm == "iqr":
+        return detect_outliers_iqr(data)
+    elif algorithm == "dbscan":
+        return detect_outliers_dbscan(data)
+    elif algorithm == "isolation_forest":
+        return detect_outliers_isolation_forest(data)
+    else:
+        logger.error(f"❌ Unsupported algorithm: {algorithm}")
+        return None
 
 
 # ✅ **Outlier Detection Methods (No Change)**

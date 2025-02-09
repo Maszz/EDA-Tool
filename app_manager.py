@@ -13,7 +13,6 @@ from callbacks.overviews import (
     register_duplicate_rows_callbacks,
     register_file_summary_callbacks,
     register_head_table_callbacks,
-    register_missing_values_callbacks,
 )
 from callbacks.statistics import (
     register_correlation_heatmap_callbacks,
@@ -268,7 +267,6 @@ class AppManager:
         register_duplicate_rows_callbacks(self.app)
         register_file_summary_callbacks(self.app)
         register_data_summary_callbacks(self.app)
-        register_missing_values_callbacks(self.app)
 
         # Register Statistics Callbacks
         register_statistic_table_callbacks(self.app)

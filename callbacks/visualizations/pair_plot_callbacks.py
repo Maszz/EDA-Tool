@@ -1,12 +1,12 @@
 import logging
 import polars as pl
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
 from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
 
 
 def register_pair_plot_callbacks(app):
@@ -18,58 +18,50 @@ def register_pair_plot_callbacks(app):
         Input("pairplot-features-dropdown", "value"),
     )
     def update_pair_plot(file_uploaded, selected_features):
-        """Generates a pair plot for selected numerical features."""
+        """Generates a resampled pair plot for selected numerical features using Polars."""
 
         if not file_uploaded:
-            logger.warning("⚠️ No dataset uploaded. Clearing pair plot.")
             return go.Figure()
 
         df: pl.DataFrame = Store.get_static("data_frame")
+        if df is None or not selected_features:
+            return go.Figure()  # No valid data
 
-        if df is None:
-            logger.error("❌ Dataset not found in memory despite file upload.")
-            return go.Figure()
+        # ✅ Filter only valid numerical features
+        valid_features = [
+            col
+            for col in selected_features
+            if col in df.columns and df[col].dtype in (pl.Float64, pl.Int64)
+        ]
 
-        if not selected_features or not all(
-            col in df.columns for col in selected_features
-        ):
-            logger.warning(
-                f"⚠️ Invalid or missing features selected: {selected_features}"
-            )
-            return go.Figure()
+        if len(valid_features) < 2:
+            return go.Figure()  # Pair plot requires at least 2 features
 
-        # Generate cache key
-        cache_key = f"pair_plot_{'_'.join(selected_features)}"
+        # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
+        cache_key = f"pair_plot_{'_'.join(valid_features)}_{df.shape}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
-
         if cached_result:
-            logger.info(f"✅ Loaded cached pair plot for features: {selected_features}")
-            return cached_result
+            return cached_result  # Return cached result
 
         try:
-            # Convert selected features to NumPy array
-            data = np.column_stack([df[col].to_numpy() for col in selected_features])
+            # ✅ Select only necessary columns (keeps data in Polars)
+            pairplot_df = df.select(valid_features).to_dicts()  # Convert to dict
 
-            # Convert back to Polars DataFrame with correct column names
-            pairplot_df = pl.DataFrame(data, schema=selected_features)
-
-            # Generate scatter matrix (Pair Plot)
-            fig = px.scatter_matrix(
-                pairplot_df,
-                dimensions=selected_features,
-                title="Pair Plot of Selected Features",
-                template="plotly_white",
+            # ✅ Resampled Pair Plot
+            fig = FigureResampler(
+                px.scatter_matrix(
+                    pairplot_df,  # Use dictionary-based input
+                    dimensions=valid_features,
+                    title="Resampled Pair Plot of Selected Features",
+                    template="plotly_white",
+                )
             )
 
-            logger.info(
-                f"✅ Successfully generated pair plot for features: {selected_features}"
-            )
-
-            # Store in cache
+            # ✅ Store in cache
             CACHE_MANAGER.save_cache(cache_key, df, fig)
 
             return fig
 
         except Exception as e:
-            logger.error(f"❌ Error generating pair plot: {e}")
+            logger.error(f"❌ Error generating resampled pair plot: {e}")
             return go.Figure()

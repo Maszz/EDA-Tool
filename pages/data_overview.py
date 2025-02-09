@@ -78,15 +78,15 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                 ],
                 className="justify-content-center mb-4",
             ),
-            # Dataset Summary & Missing Value Histogram
+            # Dataset Summary & ⚠️ Missing Values
             dbc.Row(
                 [
-                    # Dataset Summary (Data Types & Missing Values)
+                    # Dataset Summary (Data Types)
                     dbc.Col(
                         dbc.Card(
                             [
                                 dbc.CardHeader(
-                                    "Data Types & Missing Values",
+                                    "Data Types",
                                     className="bg-dark text-white",
                                 ),
                                 dbc.CardBody(
@@ -98,31 +98,33 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                             ],
                             className="shadow-sm",
                         ),
-                        width=6,
+                        width=8,
                     ),
-                    # Missing Value Histogram
+                    # ⚠️ Missing Values Summary
                     dbc.Col(
                         dbc.Card(
                             [
                                 dbc.CardHeader(
-                                    "Missing Data Patterns",
+                                    "⚠️ Missing Values",
                                     className="bg-danger text-white",
                                 ),
                                 dbc.CardBody(
                                     dcc.Loading(
                                         type="circle",
-                                        children=[dcc.Graph(id="missing-value-heat")],
+                                        children=[
+                                            html.Div(id="missing-values-summary")
+                                        ],
                                     )
                                 ),
                             ],
                             className="shadow-sm",
                         ),
-                        width=6,
+                        width=4,
                     ),
                 ],
-                className="justify-content-center mb-4",
+                class_name="justify-content-center mb-4",
             ),
         ],
         fluid=True,
-        className="p-4",
+        class_name="p-4",
     )

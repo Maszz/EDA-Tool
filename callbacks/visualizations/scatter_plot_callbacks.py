@@ -1,12 +1,11 @@
 import logging
 import polars as pl
-import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
 from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
 
 
 def register_scatter_plot_callbacks(app):
@@ -19,61 +18,63 @@ def register_scatter_plot_callbacks(app):
         Input("feature-y-dropdown", "value"),
     )
     def update_scatter_plot(file_uploaded, feature_x, feature_y):
-        """Generates a scatter plot for selected numerical features with caching and error handling."""
+        """Generates an optimized Scatter plot with WebGL and resampling, supporting same X and Y columns."""
 
         if not file_uploaded:
-            logger.warning("⚠️ No dataset uploaded. Clearing Scatter plot.")
             return go.Figure()
 
         df: pl.DataFrame = Store.get_static("data_frame")
+        if df is None or not feature_x or not feature_y:
+            return go.Figure()  # No valid data
 
-        if df is None:
-            logger.error("❌ Dataset not found in memory despite file upload.")
-            return go.Figure()
-
-        if not feature_x or not feature_y:
-            logger.warning("⚠️ Missing feature selection for Scatter plot.")
-            return go.Figure()
-
+        # ✅ Check if selected features exist
         if feature_x not in df.columns or feature_y not in df.columns:
-            logger.error(
-                f"❌ Selected features {feature_x} or {feature_y} not found in dataset."
-            )
-            return go.Figure()
+            return go.Figure()  # Invalid feature selection
 
-        # Generate a cache key for the scatter plot
-        cache_key = f"scatter_{feature_x}_{feature_y}"
-        cached_plot = CACHE_MANAGER.load_cache(cache_key, df)
+        # ✅ Handle duplicate column names by renaming the Y-axis column if needed
+        if feature_x == feature_y:
+            feature_y_renamed = f"{feature_y}_y"
+            df = df.with_columns(df[feature_y].alias(feature_y_renamed))
+            feature_y = feature_y_renamed  # Use new alias for processing
 
-        if cached_plot:
-            logger.info(
-                f"✅ Loaded cached Scatter plot for {feature_x} vs {feature_y}."
-            )
-            return cached_plot
+        # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
+        cache_key = f"scatter_{feature_x}_{feature_y}_{df.shape}"
+        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+        if cached_result:
+            return cached_result  # Return cached result
 
         try:
-            # Extract feature data
-            x_data = df[feature_x].drop_nulls().to_numpy()
-            y_data = df[feature_y].drop_nulls().to_numpy()
+            # ✅ Extract feature data (handling NaNs)
+            df_clean = df.select([feature_x, feature_y]).drop_nulls()
+            if df_clean.is_empty():
+                return go.Figure()  # No valid data
 
-            # Ensure sufficient data points
-            if x_data.size == 0 or y_data.size == 0:
-                logger.warning("⚠️ Insufficient valid data points for Scatter plot.")
-                return go.Figure()
+            x_data, y_data = (
+                df_clean[feature_x].to_numpy(),
+                df_clean[feature_y].to_numpy(),
+            )
 
-            fig = px.scatter(
-                x=x_data,
-                y=y_data,
-                title=f"Scatter Plot: {feature_x} vs {feature_y}",
-                labels={"x": feature_x, "y": feature_y},
+            # ✅ Resampled Scattergl Plot
+            fig = FigureResampler(go.Figure())
+
+            fig.add_trace(
+                go.Scattergl(
+                    x=x_data,
+                    y=y_data,
+                    mode="markers",
+                    marker=dict(color="blue", size=5, opacity=0.7),
+                    name=f"{feature_x} vs {feature_y.replace('_y', '')}",
+                )
+            )
+
+            fig.update_layout(
+                title=f"Scatter Plot: {feature_x} vs {feature_y.replace('_y', '')} (WebGL + Resampled)",
+                xaxis_title=feature_x,
+                yaxis_title=feature_y.replace("_y", ""),  # Remove alias in display
                 template="plotly_white",
             )
 
-            logger.info(
-                f"✅ Successfully generated Scatter plot for {feature_x} vs {feature_y}."
-            )
-
-            # Store the generated plot in cache
+            # ✅ Store in cache
             CACHE_MANAGER.save_cache(cache_key, df, fig)
 
             return fig

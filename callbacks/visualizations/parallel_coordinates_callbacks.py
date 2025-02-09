@@ -1,12 +1,12 @@
 import logging
 import polars as pl
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output
 from utils.store import Store
 from utils.logger_config import logger  # Import logger
 from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
+from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
 
 
 def register_parallel_coordinates_callbacks(app):
@@ -18,56 +18,48 @@ def register_parallel_coordinates_callbacks(app):
         Input("multivariate-features-dropdown", "value"),
     )
     def update_parallel_coordinates(file_uploaded, selected_features):
-        """Generates a parallel coordinates plot for multivariate relationships."""
+        """Generates an optimized parallel coordinates plot for multivariate relationships."""
 
         if not file_uploaded:
-            logger.warning("⚠️ No dataset uploaded. Clearing parallel coordinates plot.")
             return go.Figure()
 
         df: pl.DataFrame = Store.get_static("data_frame")
+        if df is None or not selected_features:
+            return go.Figure()  # No valid data
 
-        if df is None:
-            logger.error("❌ Dataset not found in memory despite file upload.")
-            return go.Figure()
+        # ✅ Filter only valid numerical features
+        valid_features = [
+            col
+            for col in selected_features
+            if col in df.columns and df[col].dtype in (pl.Float64, pl.Int64)
+        ]
 
-        if not selected_features or not all(
-            col in df.columns for col in selected_features
-        ):
-            logger.warning(
-                f"⚠️ Invalid or missing features selected: {selected_features}"
-            )
-            return go.Figure()
+        if len(valid_features) < 2:
+            return go.Figure()  # Parallel plot requires at least 2 features
 
-        # Generate cache key
-        cache_key = f"parallel_coordinates_{'_'.join(selected_features)}"
+        # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
+        cache_key = f"parallel_coordinates_{'_'.join(valid_features)}_{df.shape}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
-
         if cached_result:
-            logger.info(
-                f"✅ Loaded cached parallel coordinates plot for features: {selected_features}"
-            )
-            return cached_result
+            return cached_result  # Return cached result
 
         try:
-            # Convert selected features to NumPy array
-            data = np.column_stack([df[col].to_numpy() for col in selected_features])
+            # ✅ Select only necessary columns (keeps data in Polars)
+            parallel_df = df.select(
+                valid_features
+            ).to_dicts()  # Convert to dict for Plotly
 
-            # Convert back to Polars DataFrame with correct column names
-            parallel_df = pl.DataFrame(data, schema=selected_features)
-
-            # Generate Parallel Coordinates Plot
-            fig = px.parallel_coordinates(
-                parallel_df,
-                dimensions=selected_features,
-                title="Parallel Coordinates Plot",
-                template="plotly_white",
+            # ✅ Resampled Parallel Coordinates Plot
+            fig = FigureResampler(
+                px.parallel_coordinates(
+                    parallel_df,
+                    dimensions=valid_features,
+                    title="Resampled Parallel Coordinates Plot",
+                    template="plotly_white",
+                )
             )
 
-            logger.info(
-                f"✅ Successfully generated parallel coordinates plot for features: {selected_features}"
-            )
-
-            # Store in cache
+            # ✅ Store in cache
             CACHE_MANAGER.save_cache(cache_key, df, fig)
 
             return fig

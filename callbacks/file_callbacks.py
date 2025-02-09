@@ -97,11 +97,11 @@ def register_file_callbacks(app: "Dash") -> None:
     def handle_file_upload(contents, filename):
         """Handles file upload, stores filename, and prevents unnecessary reloads."""
 
-        # ✅ Check if a file is already stored
+        # Check if a file is already stored
         existing_df = Store.get_static("data_frame")
         stored_filename = Store.get_static("filename")
 
-        if existing_df is not None and stored_filename:
+        if existing_df is not None and stored_filename and not contents:
             logger.info(
                 f"📄 {stored_filename} (Already Loaded) - Preventing redundant upload."
             )
@@ -111,51 +111,54 @@ def register_file_callbacks(app: "Dash") -> None:
                         f"📄 {stored_filename} (Already Loaded)",
                         style={"fontWeight": "bold"},
                     ),
-                    html.P(
-                        "✅ File is already loaded in memory!", style={"color": "green"}
-                    ),
+                    html.P("✅ File is already loaded", style={"color": "green"}),
                 ]
             )
-            return [True, file_info, None, False]  # Prevent redundant reloading
+            return [True, file_info, None, False]
 
         if contents:
             try:
                 content_type, content_string = contents.split(",")
+                logger.info(f"Processing upload for {filename}...")
+
+                # Check file type early
+                if not filename.endswith(".csv"):
+                    logger.warning(f"❌ Unsupported file type uploaded: {filename}")
+                    return [
+                        False,
+                        "❌ Unsupported file type.",
+                        None,
+                        True,
+                    ]
+
+                # Efficient decoding and file reading
                 decoded = base64.b64decode(content_string)
+                df = pl.read_csv(io.BytesIO(decoded), use_pyarrow=True)
 
-                if filename.endswith(".csv"):
-                    df = pl.read_csv(io.StringIO(decoded.decode("utf-8")))  # Read CSV
-                    Store.set_static("data_frame", df)  # Store dataframe
-                    Store.set_static("filename", filename)  # Store filename ✅
+                # Store the DataFrame and filename
+                Store.set_static("data_frame", df)
+                Store.set_static("filename", filename)
 
-                    logger.info(f"✅ File uploaded: {filename}, Shape: {df.shape}")
+                logger.info(f"✅ File uploaded: {filename}, Shape: {df.shape}")
 
-                    file_info = html.Div(
-                        [
-                            html.P(
-                                f"📄 {filename} ({len(decoded) / 1024:.2f} KB)",
-                                style={"fontWeight": "bold"},
-                            ),
-                            html.P(
-                                "✅ File uploaded successfully!",
-                                style={"color": "green"},
-                            ),
-                        ]
-                    )
+                file_info = html.Div(
+                    [
+                        html.P(
+                            f"📄 {filename} ({len(decoded) / 1024:.2f} KB)",
+                            style={"fontWeight": "bold"},
+                        ),
+                        html.P(
+                            "✅ File uploaded successfully!",
+                            style={"color": "green"},
+                        ),
+                    ]
+                )
 
-                    return [True, file_info, None, False]  # Enable Reset Button
-
-                logger.warning(f"❌ Unsupported file type uploaded: {filename}")
-                return [
-                    False,
-                    "❌ Unsupported file type.",
-                    None,
-                    True,
-                ]  # Unsupported file type
+                return [True, file_info, None, False]  # Enable Reset Button
 
             except Exception as e:
                 logger.error(f"❌ Error processing file {filename}: {e}")
-                return [False, f"❌ Error: {e}", None, True]  # Handle errors gracefully
+                return [False, f"❌ Error: {e}", None, True]
 
         logger.info("📂 No file uploaded yet.")
-        return [False, "📂 No file uploaded yet.", None, True]  # No file uploaded
+        return [False, "📂 No file uploaded yet.", None, True]

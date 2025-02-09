@@ -17,50 +17,64 @@ def register_duplicate_rows_callbacks(app: "Dash") -> None:
     def render_duplicate_rows(trigger):
         """Displays duplicate row count and a scrollable table of duplicates using caching."""
         if not trigger:
-            logger.warning("⚠️ No dataset loaded. Skipping duplicate rows check.")
             return "No dataset loaded."
 
         df: pl.DataFrame = Store.get_static("data_frame")
-
         if df is None:
-            logger.warning("⚠️ Dataset not found in memory despite file upload.")
             return "No dataset loaded."
 
-        # ✅ Check if duplicate check is cached
-        cache_key = "duplicate_rows"
+        # ✅ Generate cache key using dataset shape
+        cache_key = f"duplicate_rows_{df.shape}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            logger.info("🔄 Loaded cached duplicate rows result.")
             return cached_result  # Use cached result instead of recalculating
 
-        # Compute duplicate rows
+        # ✅ Compute duplicate rows efficiently
         duplicate_mask = df.is_duplicated()
         num_duplicates = duplicate_mask.sum()
 
         if num_duplicates > 0:
-            duplicate_rows = df.filter(duplicate_mask)  # Get duplicate rows
+            duplicate_rows = df.filter(
+                duplicate_mask
+            )  # ✅ Get duplicate rows efficiently
             logger.warning(f"🔁 Found {num_duplicates:,} duplicate rows.")
 
             result = dbc.Card(
                 dbc.CardBody(
                     [
-                        html.P(f"🔁 {num_duplicates:,} duplicate rows found."),
+                        html.H5(
+                            f"🔁 {num_duplicates:,} Duplicate Rows Found",
+                            className="card-title",
+                        ),
                         dash_table.DataTable(
                             data=duplicate_rows.to_dicts(),
                             columns=[{"name": col, "id": col} for col in df.columns],
+                            page_size=10,
+                            virtualization=True,
                             style_table={
                                 "maxHeight": "400px",
                                 "overflowY": "auto",
+                                "borderRadius": "8px",
+                                "boxShadow": "0px 4px 8px rgba(0,0,0,0.1)",
+                                "border": "1px solid #dee2e6",
                             },
-                            page_size=10,
                             style_cell={
                                 "textAlign": "left",
+                                "padding": "8px",
+                                "fontSize": "14px",
                                 "whiteSpace": "normal",
                             },
                             style_header={
-                                "backgroundColor": "lightgrey",
+                                "backgroundColor": "#dc3545",
+                                "color": "white",
                                 "fontWeight": "bold",
                             },
+                            style_data_conditional=[
+                                {
+                                    "if": {"row_index": "odd"},
+                                    "backgroundColor": "#f8f9fa",
+                                }
+                            ],
                         ),
                     ]
                 ),

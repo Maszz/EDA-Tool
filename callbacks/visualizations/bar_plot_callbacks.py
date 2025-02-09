@@ -1,6 +1,5 @@
 import logging
 import polars as pl
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output
@@ -18,44 +17,45 @@ def register_bar_plot_callbacks(app):
         Input("categorical-dropdown", "value"),
     )
     def update_bar_plot(file_uploaded, selected_categorical):
-        """Generates a bar plot for categorical feature distribution."""
+        """Generates an optimized bar plot for categorical feature distribution."""
 
         if not file_uploaded:
-            logger.warning("⚠️ No dataset uploaded. Clearing bar plot.")
             return go.Figure()
 
         df: pl.DataFrame = Store.get_static("data_frame")
+        if df is None or selected_categorical not in df.columns:
+            return go.Figure()  # No valid data
 
-        if df is None:
-            logger.error("❌ Dataset not found in memory despite file upload.")
-            return go.Figure()
-
-        if not selected_categorical or selected_categorical not in df.columns:
-            logger.warning(
-                f"⚠️ Selected column '{selected_categorical}' is missing or invalid."
-            )
-            return go.Figure()
-
-        # Generate cache key
-        cache_key = f"bar_plot_{selected_categorical}"
+        # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
+        cache_key = f"bar_plot_{selected_categorical}_{df.shape}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
-
         if cached_result:
-            logger.info(f"✅ Loaded cached bar plot for '{selected_categorical}'.")
-            return cached_result
+            return cached_result  # Return cached result
 
         try:
-            # Extract unique values and counts
-            unique_values, counts = np.unique(
-                df[selected_categorical].to_numpy(), return_counts=True
+            # ✅ Get value counts
+            category_counts = df[selected_categorical].value_counts()
+
+            # ✅ Inspect actual column names (Polars may return different names)
+            col_names = category_counts.columns
+            logger.info(f"🔍 Found columns in value_counts(): {col_names}")
+
+            # ✅ Rename columns dynamically based on available names
+            category_col = col_names[0]  # The categorical feature name
+            count_col = col_names[1]  # The count column
+
+            category_counts = category_counts.rename(
+                {category_col: "category", count_col: "count"}
             )
 
-            if unique_values.size == 0:
-                logger.warning(f"⚠️ No data found for column '{selected_categorical}'.")
+            unique_values = category_counts["category"].to_list()
+            counts = category_counts["count"].to_list()
+
+            if not unique_values:
                 return go.Figure()
 
-            # Create bar plot
-            fig_bar = px.bar(
+            # ✅ Create Bar Plot
+            fig = px.bar(
                 x=unique_values,
                 y=counts,
                 title=f"Bar Plot: {selected_categorical}",
@@ -63,14 +63,10 @@ def register_bar_plot_callbacks(app):
                 template="plotly_white",
             )
 
-            logger.info(
-                f"✅ Successfully generated bar plot for '{selected_categorical}'."
-            )
+            # ✅ Store in cache
+            CACHE_MANAGER.save_cache(cache_key, df, fig)
 
-            # Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig_bar)
-
-            return fig_bar
+            return fig
 
         except Exception as e:
             logger.error(

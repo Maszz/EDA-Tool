@@ -1,5 +1,5 @@
+import logging
 import polars as pl
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Input, Output, State
@@ -11,103 +11,130 @@ from boruta import BorutaPy
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder
+import numpy as np
 
 
 def register_feature_importance_plot_callbacks(app):
     """Registers callbacks for computing and visualizing feature importance with caching."""
 
     @app.callback(
+        Output("num-top-features-slider", "min"),
+        Output("num-top-features-slider", "max"),
+        Output("num-top-features-slider", "value"),
+        Output("num-top-features-slider", "marks"),  # ✅ Dynamic marks
+        Input("file-upload-status", "data"),
+    )
+    def update_slider(file_uploaded):
+        """Dynamically updates the slider min/max/marks based on dataset features."""
+        if not file_uploaded:
+            logger.warning("⚠️ No dataset uploaded. Using default slider range.")
+            return (
+                2,
+                50,
+                20,
+                {2: "2", 10: "10", 20: "20", 30: "30", 50: "50"},
+            )  # Default
+
+        df: pl.DataFrame = Store.get_static("data_frame")
+        if df is None:
+            logger.error("❌ Dataset missing in memory despite upload.")
+            return 2, 50, 20, {2: "2", 10: "10", 20: "20", 30: "30", 50: "50"}
+
+        num_features = len(df.columns) - 1  # Exclude target column
+
+        # ✅ Define min/max/default values
+        min_features = max(2, min(num_features, 2))  # Ensure at least 2
+        max_features = min(50, num_features)  # Limit max to 50 or dataset size
+        default_features = min(20, max_features)  # Default selection
+
+        # ✅ Dynamically generate marks
+        num_steps = 5 if max_features > 10 else 2  # Less marks for small datasets
+        marks_values = np.linspace(min_features, max_features, num_steps, dtype=int)
+        marks = {int(v): str(v) for v in marks_values}
+
+        logger.info(
+            f"🔄 Updated feature slider: Min={min_features}, Max={max_features}, Default={default_features}, Marks={marks}"
+        )
+
+        return min_features, max_features, default_features, marks
+
+    @app.callback(
         Output("feature-importance-plot", "figure"),
         Output("training-status", "children"),
         Input("target-column", "value"),
         Input("importance-method", "value"),
+        Input(
+            "num-top-features-slider", "value"
+        ),  # ✅ NEW: User selects number of top features
         State("file-upload-status", "data"),
     )
-    def update_feature_importance_plot(target_column, importance_method, file_uploaded):
+    def update_feature_importance_plot(
+        target_column, importance_method, num_top_features, file_uploaded
+    ):
         """Computes and displays feature importance using LightGBM or Boruta with caching."""
 
         # ✅ Check if a file is uploaded
         if not file_uploaded:
-            logger.warning("⚠️ No file uploaded. Feature importance cannot be computed.")
-            return go.Figure(), "⚠️ No dataset loaded. Please upload a file."
+            return _log_and_return_empty("⚠️ No dataset loaded. Please upload a file.")
 
         # ✅ Load dataset from Store
         df: pl.DataFrame = Store.get_static("data_frame")
         if df is None:
-            logger.error(
-                "❌ Dataset missing in memory despite upload. Possible storage issue."
-            )
-            return go.Figure(), "⚠️ Dataset not found in memory. Please re-upload."
+            return _log_and_return_empty("⚠️ Dataset missing in memory.")
 
         if not target_column:
-            logger.warning("⚠️ No target column selected for feature importance.")
-            return go.Figure(), "⚠️ No target column selected."
+            return _log_and_return_empty("⚠️ No target column selected.")
 
-        # ✅ Create a Unique Cache Key Including the Target Column
-        cache_key = f"feature_importance_{importance_method}_{target_column}"
+        # ✅ Generate a Unique Cache Key Including the Target Column
+        cache_key = f"feature_importance_{importance_method}_{target_column}_{num_top_features}_{df.shape}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            logger.info(
-                f"🔄 Using cached feature importance for {importance_method} (Target: {target_column})."
-            )
             return cached_result  # Skip recomputation
 
         try:
-            # Separate features and target
-            X_df = df.drop([df.columns[0], target_column])  # Drop ID and target columns
-            y = df[target_column].to_numpy()
+            # ✅ Extract features and target
+            X_df = df.drop([target_column])  # Drop only target column
+            y = df[target_column]
 
-            # Identify numerical and non-numerical columns
-            numerical_columns = [
+            # ✅ Detect numerical and categorical columns
+            num_cols = [
                 col for col in X_df.columns if X_df[col].dtype in (pl.Float64, pl.Int64)
             ]
-            non_numerical_columns = [
-                col for col in X_df.columns if col not in numerical_columns
-            ]
+            cat_cols = [col for col in X_df.columns if col not in num_cols]
 
-            # Encode categorical columns
-            if non_numerical_columns:
-                for col in non_numerical_columns:
-                    X_df = X_df.with_columns(
-                        X_df[col].cast(pl.Utf8).rank(descending=False).alias(col)
-                    )
-                logger.info(
-                    f"📊 Encoded {len(non_numerical_columns)} categorical features."
+            # ✅ Encode categorical features
+            if cat_cols:
+                X_df = X_df.with_columns(
+                    [X_df[col].rank(descending=False).alias(col) for col in cat_cols]
+                )
+                logger.info(f"📊 Encoded {len(cat_cols)} categorical features.")
+
+            # ✅ Convert X to NumPy and handle missing values
+            X = SimpleImputer(strategy="constant", fill_value=-999).fit_transform(
+                X_df.to_numpy()
+            )
+
+            # ✅ Handle missing values in `y` (Drop NaNs)
+            valid_idx = ~y.is_null().to_numpy()  # Get valid indices
+            X, y = X[valid_idx], y.to_numpy()[valid_idx]  # Filter both X and y
+
+            if len(y) == 0:
+                return _log_and_return_empty(
+                    "⚠️ No valid target values after NaN removal."
                 )
 
-            # Convert X to a NumPy array
-            X = X_df.to_numpy()
-
-            # Handle missing values
-            imputer_X = SimpleImputer(strategy="constant", fill_value=-999)
-            X = imputer_X.fit_transform(X)
-
-            # Select Model Based on Target Type
+            # ✅ Encode target for classification
             if df[target_column].dtype == pl.Utf8:
-                imputer_y = SimpleImputer(strategy="most_frequent")
-                y = imputer_y.fit_transform(y.reshape(-1, 1)).ravel()
-
-                le = LabelEncoder()
-                y = le.fit_transform(y)
-
+                y = LabelEncoder().fit_transform(y)
                 model = lgb.LGBMClassifier(random_state=42, n_jobs=-1)
-                logger.info(f"🟢 Using LightGBM Classifier for target: {target_column}")
-
             else:
-                imputer_y = SimpleImputer(strategy="mean")
-                y = imputer_y.fit_transform(y.reshape(-1, 1)).ravel()
-
                 model = lgb.LGBMRegressor(random_state=42, n_jobs=-1)
-                logger.info(f"🟠 Using LightGBM Regressor for target: {target_column}")
 
-            # Compute Feature Importance
+            # ✅ Compute Feature Importance
             if importance_method == "native":
-                logger.info(
-                    f"⚙️ Training LightGBM model with native importance method..."
-                )
+                logger.info("⚙️ Training LightGBM for native feature importance...")
                 model.fit(X, y)
                 importances = model.feature_importances_
-                logger.info("✅ Feature importance computed using LightGBM.")
 
             elif importance_method == "boruta":
                 logger.info(f"⚙️ Running Boruta Feature Selection...")
@@ -116,24 +143,26 @@ def register_feature_importance_plot_callbacks(app):
                     if df[target_column].dtype != pl.Utf8
                     else RandomForestClassifier(n_jobs=-1, random_state=42)
                 )
-
                 boruta_selector = BorutaPy(
-                    rf_model, n_estimators="auto", verbose=2, random_state=42
+                    rf_model, n_estimators="auto", verbose=0, random_state=42
                 )
                 boruta_selector.fit(X, y)
                 importances = boruta_selector.ranking_
-                logger.info("✅ Feature importance computed using Boruta.")
 
-            # Convert Feature Importance to Polars DataFrame
-            feature_names = X_df.columns
+            # ✅ Convert to Polars DataFrame
             importance_df = pl.DataFrame(
-                {"Feature": feature_names, "Importance": importances}
+                {"Feature": X_df.columns, "Importance": importances}
             ).sort("Importance", descending=True)
 
-            # Create Bar Plot
+            # ✅ Apply Top `N` Filtering
+            num_top_features = min(num_top_features, len(importance_df))
+            importance_df = importance_df.head(num_top_features)
+
+            # ✅ Create Plotly Bar Plot
             fig = px.bar(
-                x=importance_df["Importance"].to_list(),
-                y=importance_df["Feature"].to_list(),
+                importance_df,
+                x="Importance",
+                y="Feature",
                 orientation="h",
                 title=f"Feature Importance ({importance_method.upper()}) - Target: {target_column}",
                 labels={"x": "Importance Score", "y": "Features"},
@@ -141,16 +170,21 @@ def register_feature_importance_plot_callbacks(app):
             )
             fig.update_traces(marker_color="blue", opacity=0.7)
 
-            final_message = f"✅ Training Completed using {importance_method.capitalize()} method! Feature Importance is now displayed."
-
-            # ✅ Save to Cache for Future Use
-            CACHE_MANAGER.save_cache(cache_key, df, (fig, final_message))
-            logger.info(
-                f"💾 Feature importance cached for {importance_method} (Target: {target_column})."
+            final_message = (
+                f"✅ Training Completed using {importance_method.capitalize()} method!"
             )
+
+            # ✅ Save to Cache
+            CACHE_MANAGER.save_cache(cache_key, df, (fig, final_message))
+            logger.info(f"💾 Feature importance cached.")
 
             return fig, final_message
 
         except Exception as e:
-            logger.error(f"❌ Error in feature importance computation: {e}")
-            return go.Figure(), f"❌ Error: {str(e)}"
+            return _log_and_return_empty(f"❌ Error: {str(e)}")
+
+
+def _log_and_return_empty(message: str):
+    """Helper function to log a warning and return an empty figure."""
+    logger.warning(message)
+    return go.Figure(), message
