@@ -1,77 +1,88 @@
+import numpy as np
 import plotly.graph_objects as go
 import polars as pl
 from dash import Input, Output
-from plotly_resampler import FigureResampler  # ✅ Adds resampling for large datasets
-from sklearn.decomposition import PCA
+from plotly_resampler import FigureResampler
+from scipy.stats import gaussian_kde  # Import Gaussian KDE for contour
 
-from utils.cache_manager import CACHE_MANAGER  # Import Cache Manager
-from utils.logger_config import logger  # Import logger
+from utils.cache_manager import CACHE_MANAGER
+from utils.logger_config import logger
 from utils.store import Store
 
 
-def register_pca_projection_callbacks(app) -> None:
-    """Registers the callback for PCA 2D Projection visualization."""
+def register_contour_plot_callbacks(app) -> None:
+    """Registers callbacks for the Contour Plot visualization."""
 
     @app.callback(
-        Output("pca-plot", "figure"),
+        Output("contour-plot", "figure"),
         Input("file-upload-status", "data"),
+        Input("feature-x-dropdown", "value"),
+        Input("feature-y-dropdown", "value"),
     )
-    def update_pca_plot(file_uploaded):
-        """Generates an optimized PCA 2D Projection with WebGL and resampling."""
+    def update_contour_plot(file_uploaded, feature_x, feature_y):
+        """Generates a Contour Plot using KDE density estimation."""
         if not file_uploaded:
             return go.Figure()
 
         df: pl.DataFrame = Store.get_static("data_frame")
-        if df is None:
+        if df is None or not feature_x or not feature_y:
             return go.Figure()  # No valid data
 
-        # ✅ Filter only numerical features
-        num_cols = [
-            col for col in df.columns if df[col].dtype in (pl.Float64, pl.Int64)
-        ]
-        if len(num_cols) < 2:
-            return go.Figure()  # PCA needs at least 2 numeric features
+        # ✅ Check if selected features exist
+        if feature_x not in df.columns or feature_y not in df.columns:
+            return go.Figure()  # Invalid feature selection
 
-        # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
-        cache_key = f"pca_projection_{df.shape}"
+        # ✅ Handle duplicate column names
+        if feature_x == feature_y:
+            feature_y_renamed = f"{feature_y}_y"
+            df = df.with_columns(df[feature_y].alias(feature_y_renamed))
+            feature_y = feature_y_renamed
+
+        # ✅ Generate cache key using dataset shape
+        cache_key = f"contour_{feature_x}_{feature_y}_{df.shape}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result  # Return cached result
+            return cached_result
 
         try:
-            # ✅ Handle missing values: replace NaNs with column mean
-            clean_df = df.select(num_cols).fill_nan(None).drop_nulls()
+            # ✅ Extract feature data (handling NaNs)
+            df_clean = df.select([feature_x, feature_y]).drop_nulls()
+            if df_clean.is_empty():
+                return go.Figure()  # No valid data
 
-            if clean_df.is_empty() or clean_df.shape[0] < 2:
-                return go.Figure()  # Not enough data after cleaning
+            # ✅ Sort data by x-axis
+            df_clean = df_clean.sort(feature_x)
 
-            # ✅ Convert to NumPy for PCA
-            data_matrix = clean_df.to_numpy()
+            x_data, y_data = (
+                df_clean[feature_x].to_numpy(),
+                df_clean[feature_y].to_numpy(),
+            )
 
-            # ✅ Perform PCA
-            pca = PCA(n_components=2)
-            reduced = pca.fit_transform(data_matrix)
+            # ✅ Estimate density using KDE
+            kde = gaussian_kde(np.vstack([x_data, y_data]))
+            x_grid, y_grid = np.meshgrid(
+                np.linspace(x_data.min(), x_data.max(), 100),
+                np.linspace(y_data.min(), y_data.max(), 100),
+            )
+            density = kde(np.vstack([x_grid.ravel(), y_grid.ravel()])).reshape(100, 100)
 
-            # ✅ Convert PCA results for plotting
-            pca_x, pca_y = reduced[:, 0], reduced[:, 1]
-
-            # ✅ Resampled Scattergl PCA Plot
-            fig = FigureResampler(go.Figure())
+            # ✅ Create contour plot
+            fig = go.Figure()
 
             fig.add_trace(
-                go.Scattergl(
-                    x=pca_x,
-                    y=pca_y,
-                    mode="markers",
-                    marker={"color": "blue", "size": 5, "opacity": 0.7},
-                    name="PCA Projection",
+                go.Contour(
+                    x=np.linspace(x_data.min(), x_data.max(), 100),
+                    y=np.linspace(y_data.min(), y_data.max(), 100),
+                    z=density,
+                    colorscale="Viridis",
+                    contours=dict(showlabels=True, size=2),
                 )
             )
 
             fig.update_layout(
-                title="PCA 2D Projection (WebGL + Resampled)",
-                xaxis_title="Principal Component 1",
-                yaxis_title="Principal Component 2",
+                title=f"Contour Plot: {feature_x} vs {feature_y.replace('_y', '')}",
+                xaxis_title=feature_x,
+                yaxis_title=feature_y.replace("_y", ""),
                 template="plotly_white",
             )
 
@@ -81,5 +92,5 @@ def register_pca_projection_callbacks(app) -> None:
             return fig
 
         except Exception as e:
-            logger.error(f"❌ Error generating PCA plot: {e}")
+            logger.error(f"❌ Error generating Contour plot: {e}")
             return go.Figure()

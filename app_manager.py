@@ -25,7 +25,7 @@ from callbacks.visualizations import (
     register_bar_plot_callbacks,
     register_pair_plot_callbacks,
     register_parallel_coordinates_callbacks,
-    register_pca_projection_callbacks,
+    register_contour_plot_callbacks,
     register_scatter_plot_callbacks,
     register_violin_plot_callbacks,
     register_visualization_selector_callbacks,
@@ -282,7 +282,7 @@ class AppManager:
         register_violin_plot_callbacks(self.app)
         register_visualization_selector_callbacks(self.app)
         register_parallel_coordinates_callbacks(self.app)
-        register_pca_projection_callbacks(self.app)
+        register_contour_plot_callbacks(self.app)
 
         # Register Feature Importance Callbacks
         register_feature_importance_selector_callbacks(self.app)

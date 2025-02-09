@@ -37,6 +37,33 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                             placeholder="Select a feature for Y-axis...",
                                             className="dropdown-style mb-3",
                                         ),
+                                        dbc.Row(
+                                            [
+                                                html.Label(
+                                                    "Select Plot Type:",
+                                                    className="fw-bold mb-2",
+                                                ),
+                                                dbc.RadioItems(
+                                                    id="scatter-contour-toggle",
+                                                    options=[
+                                                        {
+                                                            "label": "🔵 Scatter Plot",
+                                                            "value": "scatter",
+                                                        },
+                                                        {
+                                                            "label": "🔶 Contour Plot",
+                                                            "value": "contour",
+                                                        },
+                                                    ],
+                                                    value="scatter",  # Default to Scatter Plot
+                                                    inline=True,
+                                                    className="mb-3",
+                                                    labelClassName="me-3 text-primary",  # Adds spacing & color
+                                                    inputClassName="me-2",  # Adds space between radio button and text
+                                                ),
+                                            ],
+                                            className="mb-3 d-flex align-items-center",
+                                        ),
                                         dcc.Loading(
                                             type="circle",
                                             children=[dcc.Graph(id="scatter-plot")],
@@ -141,7 +168,7 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                 ),
                 className="mb-4",
             ),
-            # Multivariate Analysis (Parallel Coordinates + PCA)
+            # Multivariate Analysis (Parallel Coordinates + PCA Contour)
             dbc.Row(
                 [
                     dbc.Col(
@@ -176,26 +203,6 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                         width=6,
                     ),
                     dbc.Col(
-                        dbc.Card(
-                            [
-                                dbc.CardHeader(
-                                    "Clustering Visualization (PCA 2D Projection)"
-                                ),
-                                dbc.CardBody(
-                                    [
-                                        html.P(
-                                            "The PCA plot shows a lower-dimensional projection of numerical features, useful for identifying patterns:",
-                                            className="text-muted",
-                                        ),
-                                        dcc.Loading(
-                                            type="circle",
-                                            children=[dcc.Graph(id="pca-plot")],
-                                        ),
-                                    ]
-                                ),
-                            ],
-                            className="shadow-sm",
-                        ),
                         width=6,
                     ),
                 ],
