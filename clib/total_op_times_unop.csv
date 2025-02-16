@@ -1,0 +1,4 @@
+Implementation,Operation,Total Time (s)
+Cython HashTable (UnOptimized),Insert,63.20568888098933
+Cython HashTable (UnOptimized),Lookup,51.363402564049466
+Cython HashTable (UnOptimized),Delete,14.986013267043745

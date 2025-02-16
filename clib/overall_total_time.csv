@@ -1,0 +1,3 @@
+Implementation,Total Execution Time (s)
+Python HashTable,2768.200128003984
+Cython HashTable (Optimized),126.09082473101444

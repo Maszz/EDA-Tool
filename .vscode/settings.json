@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.dat": "json",
+    "python.h": "c",
+    "bitset": "cpp"
+  }
+}

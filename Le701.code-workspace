@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../../.Trash/src"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.dat": "json",
+			"python.h": "c",
+			"bitset": "cpp"
+		}
+	}
+}
