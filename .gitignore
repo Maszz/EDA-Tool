@@ -177,4 +177,4 @@ clib/cython_modules/*.c
 clib/cython_modules/*.so
 
 # Ignore DS_Store files
-.DS_Store
+**/.DS_Store
