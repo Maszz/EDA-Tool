@@ -2,6 +2,9 @@
   "files.associations": {
     "*.dat": "json",
     "python.h": "c",
-    "bitset": "cpp"
-  }
+    "bitset": "cpp",
+    "stdio.h": "c",
+    "test.h": "c"
+  },
+  "C_Cpp.default.compilerPath": "/usr/local/opt/llvm/bin/clang-19"
 }

@@ -1,4 +1,4 @@
-import my_ext
+from clib import MathOps
 
-a = my_ext.MyClass()
-a.set_value(10)
+math_obj = MathOps()
+print(math_obj.add(2, 3))

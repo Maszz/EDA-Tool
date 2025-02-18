@@ -15,7 +15,7 @@ test: build
 # Clean Cython build artifacts
 clean:
 	@echo "Cleaning Cython build artifacts..."
-	rm -rf build/ core/*.c core/*.so core/__pycache__
+	rm -rf build/ src/cython_modules/*.c src/cython_modules/*.so src/cython_modules/__pycache__ test/__pycache__
 
 bench:
 	@echo "Running benchmarks..."

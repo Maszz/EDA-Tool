@@ -4,6 +4,7 @@ from pathlib import Path
 from setuptools import Extension, setup, find_packages
 from Cython.Build import cythonize
 import numpy as np
+import glob
 
 # Get the absolute path of clib/
 clib_dir = Path(__file__).resolve().parent
@@ -14,7 +15,10 @@ BUILD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Check if running on macOS
 is_macos = sys.platform == "darwin"
+# Define the directory for C source files
+c_files = glob.glob(str(clib_dir / "src/c/*.c"))
 
+# Define the directory for Cython files
 # Check for DEBUG mode
 DEBUG = os.getenv("DEBUG", "0") == "1"
 if DEBUG:
@@ -51,18 +55,19 @@ if not DEBUG:
 
 extensions = [
     Extension(
-        "src.elastic_hashtable",  # Specify actual module name
-        ["src/elastic_hashtable.pyx"],
+        "*",  # Specify actual module name
+        ["src/cython_modules/*.pyx", *c_files],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-        include_dirs=[np.get_include()],
+        include_dirs=[np.get_include(), str(clib_dir / "src/include")],
     )
 ]
 
 setup(
     name="clib",
-    packages=find_packages(include=["clib", "clib.src"]),
+    packages=find_packages(include=["clib", "clib.src", "clib.src.cython_modules"]),
     package_dir={
+        "cython_modules": "src/cython_modules",
         "clib": str(BUILD_DIR),
         "clib.src": "src",
     },
@@ -82,6 +87,6 @@ setup(
         },
         cache=True,
     ),
-    include_dirs=[np.get_include()],
+    include_dirs=[np.get_include(), str(clib_dir / "src/include")],
     zip_safe=False,
 )

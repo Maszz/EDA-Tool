@@ -1,5 +1,5 @@
 import unittest
-from src.math_ops import MathOps
+from src.cython_modules import MathOps
 
 
 class TestMathOps(unittest.TestCase):

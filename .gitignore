@@ -173,7 +173,6 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-*.c
-*.so
-clib/*.c
-clib/*.so
+
+clib/cython_modules/*.c
+clib/cython_modules/*.so

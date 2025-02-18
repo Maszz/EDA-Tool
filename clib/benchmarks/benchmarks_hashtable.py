@@ -11,7 +11,7 @@ sys.path.insert(0, os.getcwd())
 from native_hashtable import HashTable  # ✅ Ensure this is correctly implemented
 
 # Import Cython HashTable
-from src import CHashTable  # ✅ Import your compiled Cython module
+from clib.src.cython_modules import CHashTable  # ✅ Import your compiled Cython module
 
 # Number of operations for benchmarking
 NUM_ITEMS = 10_000_000

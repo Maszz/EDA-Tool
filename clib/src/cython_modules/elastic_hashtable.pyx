@@ -3,9 +3,11 @@ from libc.string cimport memset, strcmp
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from libc.stdlib cimport malloc, free
 from cpython.object cimport PyObject
-
 cdef extern from "string.h":
     char* strdup(const char*)
+
+#cdef extern from "test.h":
+#    void foo()
 
 # MurmurHash for better string hashing
 cdef inline unsigned int murmur_hash(const unsigned char* key):
@@ -33,6 +35,7 @@ cdef class CHashTable:
         self.count = 0
         self.table = <Entry*> malloc(self.size * sizeof(Entry))
         memset(self.table, 0, self.size * sizeof(Entry))
+        # foo()
 
     def __dealloc__(self):
         """Deallocate memory when the object is destroyed."""
