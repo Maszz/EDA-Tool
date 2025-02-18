@@ -1,0 +1,20 @@
+Results (Time in seconds, avg ± std):
+Operation       Python HashTable          Cython HashTable (Optimized)
+================================================================================
+Insert          191.135358 ± 2.732540     6.060551 ± 0.119864      
+Lookup          60.849649 ± 0.851962      5.047313 ± 0.064389      
+Delete          24.835000 ± 0.359477      1.501214 ± 0.008730      
+
+Total Execution Time Summary:
+Implementation                 Total Execution Time (s)      
+============================================================
+Python HashTable               2768.200128
+Cython HashTable (Optimized)   126.090825
+
+Total Operation Execution Time Summary:
+impl                           lookup          insert          delete         
+================================================================================
+Python HashTable               608.496488      1911.353576     248.350002     
+Cython HashTable (Optimized)   50.473132       60.605507       15.012138      
+
+✅ Execution log saved to execution_log.csv!

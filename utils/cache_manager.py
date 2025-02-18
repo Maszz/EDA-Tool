@@ -3,7 +3,7 @@ import os
 import pickle
 from pathlib import Path
 from typing import Any
-
+import xxhash
 import polars as pl
 
 from utils.logger_config import logger  # Import logger
@@ -23,11 +23,39 @@ class CacheManager:
         logger.info(f"✅ CacheManager initialized. Cache Enabled: {self.ENABLE_CACHE}")
 
     @staticmethod
-    def compute_file_hash(df: pl.DataFrame) -> str:
-        """Generates a unique hash for a DataFrame to detect changes."""
-        df_copy = df.clone()
-        df_bytes = df_copy.write_csv().encode("utf-8")
-        return hashlib.md5(df_bytes).hexdigest()
+    def compute_file_hash_sampled(df: pl.DataFrame, sample_size: int = 100) -> str:
+        """Generates a fast hash for a DataFrame using sampling and xxHash."""
+
+        if df.is_empty():
+            return xxhash.xxh64().hexdigest()  # Empty DataFrame hash
+
+        hasher = xxhash.xxh64()
+
+        # Sample rows: Get first, middle, and last parts (or full DataFrame if small)
+        num_rows = df.height
+        if num_rows <= sample_size * 3:
+            df_sample = df.clone()
+        else:
+            df_sample = pl.concat(
+                [
+                    df.head(sample_size),
+                    df.slice(num_rows // 2, sample_size),
+                    df.tail(sample_size),
+                ]
+            )
+
+        # Sample columns: Hash only a subset of columns (if many exist)
+        num_cols = df_sample.width
+        selected_cols = df_sample.columns[
+            : min(10, num_cols)
+        ]  # Use first 10 cols (or all if less)
+        df_sample = df_sample.select(selected_cols)
+
+        # Convert DataFrame to bytes and hash it
+        df_bytes = df_sample.write_csv().encode("utf-8")
+        hasher.update(df_bytes)
+
+        return hasher.hexdigest()
 
     def get_cache_index_file(self, df: pl.DataFrame) -> Path:
         """Returns the index file path based on the dataset hash."""
