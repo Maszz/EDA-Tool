@@ -39,7 +39,7 @@ def register_contour_plot_callbacks(app) -> None:
             feature_y = feature_y_renamed
 
         # ✅ Generate cache key using dataset shape
-        cache_key = f"contour_{feature_x}_{feature_y}_{df.shape}"
+        cache_key = f"contour_{feature_x}_{feature_y}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result

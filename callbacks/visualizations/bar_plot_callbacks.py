@@ -26,7 +26,7 @@ def register_bar_plot_callbacks(app) -> None:
             return go.Figure()  # No valid data
 
         # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
-        cache_key = f"bar_plot_{selected_categorical}_{df.shape}"
+        cache_key = f"bar_plot_{selected_categorical}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Return cached result

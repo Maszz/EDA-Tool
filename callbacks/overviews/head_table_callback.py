@@ -25,7 +25,7 @@ def register_head_table_callbacks(app: "Dash") -> None:
             return "No data available for display."
 
         # ✅ Generate cache key using dataset shape
-        cache_key = f"head_table_{df.shape}"
+        cache_key = f"head_table"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Use cached result if available

@@ -85,7 +85,9 @@ def register_feature_importance_plot_callbacks(app) -> None:
             return _log_and_return_empty("⚠️ No target column selected.")
 
         # ✅ Generate a Unique Cache Key Including the Target Column
-        cache_key = f"feature_importance_{importance_method}_{target_column}_{num_top_features}_{df.shape}"
+        cache_key = (
+            f"feature_importance_{importance_method}_{target_column}_{num_top_features}"
+        )
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Skip recomputation

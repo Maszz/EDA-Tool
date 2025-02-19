@@ -41,7 +41,7 @@ def register_violin_plot_callbacks(app) -> None:
             numerical_feature = numerical_feature_alias  # Use new alias for processing
 
         # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
-        cache_key = f"violin_{categorical_feature}_{numerical_feature}_{df.shape}"
+        cache_key = f"violin_{categorical_feature}_{numerical_feature}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Return cached result

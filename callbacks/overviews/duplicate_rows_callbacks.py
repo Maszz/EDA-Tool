@@ -1,4 +1,3 @@
-
 import dash_bootstrap_components as dbc
 import polars as pl
 from dash import Dash, Input, Output, dash_table, html
@@ -25,7 +24,7 @@ def register_duplicate_rows_callbacks(app: "Dash") -> None:
             return "No dataset loaded."
 
         # ✅ Generate cache key using dataset shape
-        cache_key = f"duplicate_rows_{df.shape}"
+        cache_key = f"duplicate_rows"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Use cached result instead of recalculating

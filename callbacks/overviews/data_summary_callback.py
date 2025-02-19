@@ -25,7 +25,7 @@ def register_data_summary_callbacks(app) -> None:
             return "No dataset loaded."
 
         # ✅ Generate a unique cache key based on dataset shape
-        cache_key = f"data_summary_{df.shape}"
+        cache_key = f"data_summary"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # ✅ Return cached result instantly
@@ -157,7 +157,7 @@ def register_data_summary_callbacks(app) -> None:
             return "No dataset loaded."
 
         # ✅ Generate unique cache key based on dataset shape
-        cache_key = f"missing_values_summary_{df.shape}"
+        cache_key = f"missing_values_summary"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # ✅ Return cached result instantly

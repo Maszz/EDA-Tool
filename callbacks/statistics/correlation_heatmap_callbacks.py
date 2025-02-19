@@ -28,7 +28,7 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
             return go.Figure()  # No dataset available
 
         # ✅ Generate cache key using dataset shape & method
-        cache_key = f"correlation_heatmap_{method}_{df.shape}"
+        cache_key = f"correlation_heatmap_{method}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Use cached result if available

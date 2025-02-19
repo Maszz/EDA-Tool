@@ -23,7 +23,7 @@ def register_statistic_table_callbacks(app) -> None:
             return "No data available for statistical summary."
 
         # ✅ Generate a unique cache key based on dataset shape
-        cache_key = f"dataset_statistics_{df.shape}"
+        cache_key = f"dataset_statistics_"
         cached_stats = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_stats:
             return cached_stats  # ✅ Return cached result instantly

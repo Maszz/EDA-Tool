@@ -37,7 +37,7 @@ def register_parallel_coordinates_callbacks(app) -> None:
             return go.Figure()  # Parallel plot requires at least 2 features
 
         # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
-        cache_key = f"parallel_coordinates_{'_'.join(valid_features)}_{df.shape}"
+        cache_key = f"parallel_coordinates_{'_'.join(valid_features)}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Return cached result

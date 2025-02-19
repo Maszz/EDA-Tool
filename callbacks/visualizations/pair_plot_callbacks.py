@@ -37,7 +37,7 @@ def register_pair_plot_callbacks(app) -> None:
             return go.Figure()  # Pair plot requires at least 2 features
 
         # ✅ Generate cache key using dataset shape (prevents unnecessary recomputation)
-        cache_key = f"pair_plot_{'_'.join(valid_features)}_{df.shape}"
+        cache_key = f"pair_plot_{'_'.join(valid_features)}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
             return cached_result  # Return cached result
