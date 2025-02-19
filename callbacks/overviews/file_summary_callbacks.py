@@ -26,11 +26,11 @@ def register_file_summary_callbacks(app: "Dash") -> None:
             return "No dataset loaded."
 
         # ✅ Check cache before recalculating
-        cache_key = "file_summary"
-        cached_result = CACHE_MANAGER.load_cache(cache_key, df)
-        if cached_result:
-            logger.info("🔄 Loaded cached dataset summary.")
-            return cached_result  # Return cached result instantly
+        # cache_key = "file_summary"
+        # cached_result = CACHE_MANAGER.load_cache(cache_key, df)
+        # if cached_result:
+        #     logger.info("🔄 Loaded cached dataset summary.")
+        #     return cached_result  # Return cached result instantly
 
         # Compute dataset summary
         num_rows, num_cols = df.shape
@@ -39,7 +39,7 @@ def register_file_summary_callbacks(app: "Dash") -> None:
         result = html.P(f"📊 {num_rows:,} rows, {num_cols:,} columns")
 
         # ✅ Store result in cache
-        CACHE_MANAGER.save_cache(cache_key, df, result)
+        # CACHE_MANAGER.save_cache(cache_key, df, result)
         logger.info("💾 Cached dataset summary for future use.")
 
         return result

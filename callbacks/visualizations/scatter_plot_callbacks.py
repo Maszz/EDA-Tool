@@ -43,79 +43,75 @@ def register_scatter_plot_callbacks(app) -> None:
         cache_key = f"{plot_type}_{feature_x}_{feature_y}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result
+            x_data, y_data = cached_result
+        else:
+            try:
+                # ✅ Extract feature data (handling NaNs)
+                df_clean = df.select([feature_x, feature_y]).drop_nulls()
+                if df_clean.is_empty():
+                    return go.Figure()  # No valid data
 
-        try:
-            # ✅ Extract feature data (handling NaNs)
-            df_clean = df.select([feature_x, feature_y]).drop_nulls()
-            if df_clean.is_empty():
-                return go.Figure()  # No valid data
+                # ✅ Sort data by x-axis
+                df_clean = df_clean.sort(feature_x)
+                x_data, y_data = (
+                    df_clean[feature_x].to_numpy(),
+                    df_clean[feature_y].to_numpy(),
+                )
 
-            # ✅ Sort data by x-axis
-            df_clean = df_clean.sort(feature_x)
+                # ✅ Store minimal data in cache
+                CACHE_MANAGER.save_cache(cache_key, df, (x_data, y_data))
 
-            x_data, y_data = (
-                df_clean[feature_x].to_numpy(),
-                df_clean[feature_y].to_numpy(),
+            except Exception as e:
+                logger.error(f"❌ Error generating {plot_type} plot: {e}")
+                return go.Figure()
+
+        fig = go.Figure()
+
+        if plot_type == "scatter":
+            # ✅ Resampled Scattergl Plot
+            fig = FigureResampler(go.Figure())
+            fig.add_trace(
+                go.Scattergl(
+                    x=x_data,
+                    y=y_data,
+                    mode="markers",
+                    marker={"color": "blue", "size": 5, "opacity": 0.7},
+                    name=f"{feature_x} vs {feature_y.replace('_y', '')}",
+                )
             )
 
-            fig = go.Figure()
+            fig.update_layout(
+                title=f"Scatter Plot: {feature_x} vs {feature_y.replace('_y', '')}",
+                xaxis_title=feature_x,
+                yaxis_title=feature_y.replace("_y", ""),
+                template="plotly_white",
+            )
 
-            if plot_type == "scatter":
-                # ✅ Resampled Scattergl Plot
-                fig = FigureResampler(go.Figure())
+        elif plot_type == "contour":
+            # ✅ Estimate density using KDE
+            kde = gaussian_kde(np.vstack([x_data, y_data]))
+            x_grid, y_grid = np.meshgrid(
+                np.linspace(x_data.min(), x_data.max(), 100),
+                np.linspace(y_data.min(), y_data.max(), 100),
+            )
+            density = kde(np.vstack([x_grid.ravel(), y_grid.ravel()])).reshape(100, 100)
 
-                fig.add_trace(
-                    go.Scattergl(
-                        x=x_data,
-                        y=y_data,
-                        mode="markers",
-                        marker={"color": "blue", "size": 5, "opacity": 0.7},
-                        name=f"{feature_x} vs {feature_y.replace('_y', '')}",
-                    )
+            # ✅ Create contour plot
+            fig.add_trace(
+                go.Contour(
+                    x=np.linspace(x_data.min(), x_data.max(), 100),
+                    y=np.linspace(y_data.min(), y_data.max(), 100),
+                    z=density,
+                    colorscale="Viridis",
+                    contours=dict(showlabels=True, size=2),
                 )
+            )
 
-                fig.update_layout(
-                    title=f"Scatter Plot: {feature_x} vs {feature_y.replace('_y', '')}",
-                    xaxis_title=feature_x,
-                    yaxis_title=feature_y.replace("_y", ""),
-                    template="plotly_white",
-                )
+            fig.update_layout(
+                title=f"Contour Plot: {feature_x} vs {feature_y.replace('_y', '')}",
+                xaxis_title=feature_x,
+                yaxis_title=feature_y.replace("_y", ""),
+                template="plotly_white",
+            )
 
-            elif plot_type == "contour":
-                # ✅ Estimate density using KDE
-                kde = gaussian_kde(np.vstack([x_data, y_data]))
-                x_grid, y_grid = np.meshgrid(
-                    np.linspace(x_data.min(), x_data.max(), 100),
-                    np.linspace(y_data.min(), y_data.max(), 100),
-                )
-                density = kde(np.vstack([x_grid.ravel(), y_grid.ravel()])).reshape(
-                    100, 100
-                )
-
-                # ✅ Create contour plot
-                fig.add_trace(
-                    go.Contour(
-                        x=np.linspace(x_data.min(), x_data.max(), 100),
-                        y=np.linspace(y_data.min(), y_data.max(), 100),
-                        z=density,
-                        colorscale="Viridis",
-                        contours=dict(showlabels=True, size=2),
-                    )
-                )
-
-                fig.update_layout(
-                    title=f"Contour Plot: {feature_x} vs {feature_y.replace('_y', '')}",
-                    xaxis_title=feature_x,
-                    yaxis_title=feature_y.replace("_y", ""),
-                    template="plotly_white",
-                )
-
-            # ✅ Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-
-            return fig
-
-        except Exception as e:
-            logger.error(f"❌ Error generating {plot_type} plot: {e}")
-            return go.Figure()
+        return fig

@@ -40,29 +40,31 @@ def register_parallel_coordinates_callbacks(app) -> None:
         cache_key = f"parallel_coordinates_{'_'.join(valid_features)}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result  # Return cached result
+            parallel_data = cached_result
+        else:
+            try:
+                # ✅ Select only necessary columns (keeps data in Polars)
+                parallel_data = df.select(valid_features).to_dicts()
 
-        try:
-            # ✅ Select only necessary columns (keeps data in Polars)
-            parallel_df = df.select(
-                valid_features
-            ).to_dicts()  # Convert to dict for Plotly
-
-            # ✅ Resampled Parallel Coordinates Plot
-            fig = FigureResampler(
-                px.parallel_coordinates(
-                    parallel_df,
-                    dimensions=valid_features,
-                    title="Resampled Parallel Coordinates Plot",
-                    template="plotly_white",
+                # ✅ Store minimal data in cache
+                CACHE_MANAGER.save_cache(
+                    cache_key,
+                    df,
+                    parallel_data,
                 )
+
+            except Exception as e:
+                logger.error(f"❌ Error generating parallel coordinates plot: {e}")
+                return go.Figure()
+
+        # ✅ Resampled Parallel Coordinates Plot
+        fig = FigureResampler(
+            px.parallel_coordinates(
+                parallel_data,
+                dimensions=valid_features,
+                title="Resampled Parallel Coordinates Plot",
+                template="plotly_white",
             )
+        )
 
-            # ✅ Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-
-            return fig
-
-        except Exception as e:
-            logger.error(f"❌ Error generating parallel coordinates plot: {e}")
-            return go.Figure()
+        return fig

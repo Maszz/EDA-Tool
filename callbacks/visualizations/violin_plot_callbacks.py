@@ -44,50 +44,58 @@ def register_violin_plot_callbacks(app) -> None:
         cache_key = f"violin_{categorical_feature}_{numerical_feature}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result  # Return cached result
+            x_data, y_data = cached_result
+        else:
+            try:
+                # ✅ Extract selected features and drop missing values
+                clean_df = df.select(
+                    [categorical_feature, numerical_feature]
+                ).drop_nulls()
 
-        try:
-            # ✅ Extract selected features and drop missing values
-            clean_df = df.select([categorical_feature, numerical_feature]).drop_nulls()
+                # ✅ Ensure sufficient data points
+                if clean_df.height < 2:
+                    return _log_and_return_empty(
+                        "⚠️ Insufficient valid data points for Violin plot."
+                    )
 
-            # ✅ Ensure sufficient data points
-            if clean_df.height < 2:
-                return _log_and_return_empty(
-                    "⚠️ Insufficient valid data points for Violin plot."
+                x_data = clean_df[categorical_feature].to_numpy()
+                y_data = clean_df[numerical_feature].to_numpy()
+
+                # ✅ Store minimal data in cache
+                CACHE_MANAGER.save_cache(
+                    cache_key,
+                    df,
+                    (x_data, y_data),
                 )
 
-            # ✅ Create Resampler Figure
-            fig = FigureResampler(go.Figure())
+            except Exception as e:
+                logger.error(f"❌ Error generating Violin plot: {e}")
+                return go.Figure()
 
-            # ✅ Add violin plot trace
-            fig.add_trace(
-                go.Violin(
-                    x=clean_df[categorical_feature].to_numpy(),
-                    y=clean_df[numerical_feature].to_numpy(),
-                    box_visible=True,
-                    meanline_visible=True,
-                    points="all",
-                    name=f"{numerical_feature} by {categorical_feature}",
-                )
+        # ✅ Create Resampler Figure
+        fig = FigureResampler(go.Figure())
+
+        # ✅ Add violin plot trace
+        fig.add_trace(
+            go.Violin(
+                x=x_data,
+                y=y_data,
+                box_visible=True,
+                meanline_visible=True,
+                points="all",
+                name=f"{numerical_feature} by {categorical_feature}",
             )
+        )
 
-            fig.update_layout(
-                title=f"Violin Plot: {numerical_feature} by {categorical_feature} (Resampled)",
-                xaxis_title=categorical_feature,
-                yaxis_title=numerical_feature,
-                template="plotly_white",
-            )
+        fig.update_layout(
+            title=f"Violin Plot: {numerical_feature} by {categorical_feature} (Resampled)",
+            xaxis_title=categorical_feature,
+            yaxis_title=numerical_feature,
+            template="plotly_white",
+        )
 
-            logger.info("✅ Successfully generated resampled Violin plot.")
-
-            # ✅ Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-
-            return fig
-
-        except Exception as e:
-            logger.error(f"❌ Error generating Violin plot: {e}")
-            return go.Figure()
+        logger.info("✅ Successfully generated resampled Violin plot.")
+        return fig
 
 
 def _log_and_return_empty(message: str):

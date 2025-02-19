@@ -1,6 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 import polars as pl
+import joblib
 from dash import Dash, Input, Output, dash_table
 from plotly_resampler import FigureResampler
 from scipy.stats import gaussian_kde, kurtosis, skew
@@ -35,95 +36,103 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
         cache_key = f"skewness_kurtosis_{selected_column}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result
-
-        try:
-            logger.info(
-                f"🔍 Computing skewness, kurtosis, and KDE for '{selected_column}'."
-            )
-
-            # Drop missing values efficiently
-            column_data = np.asarray(
-                df[selected_column].drop_nulls().to_list(), dtype=np.float64
-            )
-
-            if column_data.size == 0:
-                return "No valid data for analysis.", go.Figure()
-
-            # Compute skewness & kurtosis (handling NaNs better)
-            skew_value = np.nan_to_num(skew(column_data, nan_policy="omit"), nan=0.0)
-            kurtosis_value = np.nan_to_num(
-                kurtosis(column_data, nan_policy="omit"), nan=0.0
-            )
-
-            # **Prepare Skewness & Kurtosis Table**
-            table = dash_table.DataTable(
-                data=[
-                    {
-                        "Feature": selected_column,
-                        "Skewness": round(skew_value, 4),
-                        "Kurtosis": round(kurtosis_value, 4),
-                    }
-                ],
-                columns=[
-                    {"name": "Feature", "id": "Feature"},
-                    {"name": "Skewness", "id": "Skewness"},
-                    {"name": "Kurtosis", "id": "Kurtosis"},
-                ],
-                style_table={"maxHeight": "400px", "overflowY": "auto"},
-                page_size=1,
-                style_cell={"textAlign": "center", "whiteSpace": "normal"},
-                style_header={"backgroundColor": "#f8f9fa", "fontWeight": "bold"},
-            )
-
-            # **Compute KDE Curve**
-            kde = gaussian_kde(column_data)
-            x_vals = np.linspace(column_data.min(), column_data.max(), 100)
-            y_vals = kde(x_vals)
-
-            # **Create Downsampled Histogram**
-            fig = FigureResampler(go.Figure())
-            fig.add_trace(
-                go.Histogram(
-                    x=column_data,
-                    nbinsx=30,
-                    name="Histogram",
-                    opacity=0.7,
-                    marker={"color": "blue"},
+            skew_value, kurtosis_value, x_vals, y_vals, column_data = cached_result
+        else:
+            try:
+                logger.info(
+                    f"🔍 Computing skewness, kurtosis, and KDE for '{selected_column}'."
                 )
-            )
 
-            # **Overlay KDE Line (Adjusted Scaling)**
-            fig.add_trace(
-                go.Scatter(
-                    x=x_vals,
-                    y=y_vals
-                    * np.ptp(column_data)
-                    * column_data.size
-                    / 30,  # ✅ Smarter scaling
-                    mode="lines",
-                    name="KDE Density",
-                    line={"color": "red", "width": 2},
+                # Drop missing values efficiently
+                column_data = np.asarray(
+                    df[selected_column].drop_nulls().to_list(), dtype=np.float64
                 )
+
+                if column_data.size == 0:
+                    return "No valid data for analysis.", go.Figure()
+
+                # Compute skewness & kurtosis (handling NaNs better)
+                skew_value = np.nan_to_num(
+                    skew(column_data, nan_policy="omit"), nan=0.0
+                )
+                kurtosis_value = np.nan_to_num(
+                    kurtosis(column_data, nan_policy="omit"), nan=0.0
+                )
+
+                # **Compute KDE Curve**
+                kde = gaussian_kde(column_data)
+                x_vals = np.linspace(column_data.min(), column_data.max(), 100)
+                y_vals = kde(x_vals)
+
+                # Store minimal data in cache using joblib
+                cache_data = (skew_value, kurtosis_value, x_vals, y_vals, column_data)
+                CACHE_MANAGER.save_cache(
+                    cache_key,
+                    df,
+                    cache_data,
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"❌ Error while computing skewness, kurtosis, or KDE: {e}"
+                )
+                return "❌ Failed to compute analysis.", go.Figure()
+
+        # **Prepare Skewness & Kurtosis Table**
+        table = dash_table.DataTable(
+            data=[
+                {
+                    "Feature": selected_column,
+                    "Skewness": round(skew_value, 4),
+                    "Kurtosis": round(kurtosis_value, 4),
+                }
+            ],
+            columns=[
+                {"name": "Feature", "id": "Feature"},
+                {"name": "Skewness", "id": "Skewness"},
+                {"name": "Kurtosis", "id": "Kurtosis"},
+            ],
+            style_table={"maxHeight": "400px", "overflowY": "auto"},
+            page_size=1,
+            style_cell={"textAlign": "center", "whiteSpace": "normal"},
+            style_header={"backgroundColor": "#f8f9fa", "fontWeight": "bold"},
+        )
+
+        # **Create Downsampled Histogram**
+        fig = FigureResampler(go.Figure())
+        fig.add_trace(
+            go.Histogram(
+                x=column_data,
+                nbinsx=30,
+                name="Histogram",
+                opacity=0.7,
+                marker={"color": "blue"},
             )
+        )
 
-            # **Set Layout**
-            fig.update_layout(
-                title=f"Feature Distribution (Histogram & KDE) - {selected_column}",
-                xaxis_title=selected_column,
-                yaxis_title="Density / Frequency",
-                template="plotly_white",
-                showlegend=True,
+        # **Overlay KDE Line (Adjusted Scaling)**
+        fig.add_trace(
+            go.Scatter(
+                x=x_vals,
+                y=y_vals
+                * np.ptp(column_data)
+                * column_data.size
+                / 30,  # ✅ Smarter scaling
+                mode="lines",
+                name="KDE Density",
+                line={"color": "red", "width": 2},
             )
+        )
 
-            logger.info(f"✅ Successfully generated KDE plot for '{selected_column}'.")
+        # **Set Layout**
+        fig.update_layout(
+            title=f"Feature Distribution (Histogram & KDE) - {selected_column}",
+            xaxis_title=selected_column,
+            yaxis_title="Density / Frequency",
+            template="plotly_white",
+            showlegend=True,
+        )
 
-            # Store in cache
-            result = (table, fig)
-            CACHE_MANAGER.save_cache(cache_key, df, result)
+        logger.info(f"✅ Successfully generated KDE plot for '{selected_column}'.")
 
-            return result
-
-        except Exception as e:
-            logger.error(f"❌ Error while computing skewness, kurtosis, or KDE: {e}")
-            return "❌ Failed to compute analysis.", go.Figure()
+        return table, fig

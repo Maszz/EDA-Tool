@@ -40,27 +40,27 @@ def register_pair_plot_callbacks(app) -> None:
         cache_key = f"pair_plot_{'_'.join(valid_features)}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result  # Return cached result
+            pairplot_data = cached_result
+        else:
+            try:
+                # ✅ Select only necessary columns (keeps data in Polars)
+                pairplot_data = df.select(valid_features).to_dicts()
 
-        try:
-            # ✅ Select only necessary columns (keeps data in Polars)
-            pairplot_df = df.select(valid_features).to_dicts()  # Convert to dict
+                # ✅ Store minimal data in cache
+                CACHE_MANAGER.save_cache(cache_key, df, pairplot_data)
 
-            # ✅ Resampled Pair Plot
-            fig = FigureResampler(
-                px.scatter_matrix(
-                    pairplot_df,  # Use dictionary-based input
-                    dimensions=valid_features,
-                    title="Resampled Pair Plot of Selected Features",
-                    template="plotly_white",
-                )
+            except Exception as e:
+                logger.error(f"❌ Error generating resampled pair plot: {e}")
+                return go.Figure()
+
+        # ✅ Resampled Pair Plot
+        fig = FigureResampler(
+            px.scatter_matrix(
+                pairplot_data,  # Use dictionary-based input
+                dimensions=valid_features,
+                title="Resampled Pair Plot of Selected Features",
+                template="plotly_white",
             )
+        )
 
-            # ✅ Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-
-            return fig
-
-        except Exception as e:
-            logger.error(f"❌ Error generating resampled pair plot: {e}")
-            return go.Figure()
+        return fig

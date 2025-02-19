@@ -29,46 +29,51 @@ def register_bar_plot_callbacks(app) -> None:
         cache_key = f"bar_plot_{selected_categorical}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result  # Return cached result
+            x, y = cached_result
+        else:
+            try:
+                # ✅ Get value counts
+                category_counts = df[selected_categorical].value_counts()
 
-        try:
-            # ✅ Get value counts
-            category_counts = df[selected_categorical].value_counts()
+                # ✅ Inspect actual column names (Polars may return different names)
+                col_names = category_counts.columns
+                logger.info(f"🔍 Found columns in value_counts(): {col_names}")
 
-            # ✅ Inspect actual column names (Polars may return different names)
-            col_names = category_counts.columns
-            logger.info(f"🔍 Found columns in value_counts(): {col_names}")
+                # ✅ Rename columns dynamically based on available names
+                category_col = col_names[0]  # The categorical feature name
+                count_col = col_names[1]  # The count column
 
-            # ✅ Rename columns dynamically based on available names
-            category_col = col_names[0]  # The categorical feature name
-            count_col = col_names[1]  # The count column
+                category_counts = category_counts.rename(
+                    {category_col: "category", count_col: "count"}
+                )
 
-            category_counts = category_counts.rename(
-                {category_col: "category", count_col: "count"}
-            )
+                unique_values = category_counts["category"].to_list()
+                # counts = category_counts["count"].to_list()
 
-            unique_values = category_counts["category"].to_list()
-            counts = category_counts["count"].to_list()
+                if not unique_values:
+                    return go.Figure()
+                x = category_counts["category"].to_list()
+                y = category_counts["count"].to_list()
+                # ✅ Store minimal data in cache
+                CACHE_MANAGER.save_cache(
+                    cache_key,
+                    df,
+                    (x, y),
+                )
 
-            if not unique_values:
+            except Exception as e:
+                logger.error(
+                    f"❌ Error generating bar plot for '{selected_categorical}': {e}"
+                )
                 return go.Figure()
 
-            # ✅ Create Bar Plot
-            fig = px.bar(
-                x=unique_values,
-                y=counts,
-                title=f"Bar Plot: {selected_categorical}",
-                labels={"x": selected_categorical, "y": "Count"},
-                template="plotly_white",
-            )
+        # ✅ Create Bar Plot
+        fig = px.bar(
+            x=x,
+            y=y,
+            title=f"Bar Plot: {selected_categorical}",
+            labels={"x": selected_categorical, "y": "Count"},
+            template="plotly_white",
+        )
 
-            # ✅ Store in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-
-            return fig
-
-        except Exception as e:
-            logger.error(
-                f"❌ Error generating bar plot for '{selected_categorical}': {e}"
-            )
-            return go.Figure()
+        return fig

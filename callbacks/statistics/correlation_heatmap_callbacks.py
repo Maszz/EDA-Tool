@@ -31,7 +31,15 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
         cache_key = f"correlation_heatmap_{method}"
         cached_result = CACHE_MANAGER.load_cache(cache_key, df)
         if cached_result:
-            return cached_result  # Use cached result if available
+            numeric_columns, corr_matrix = cached_result
+            return px.imshow(
+                corr_matrix,
+                labels={"color": "Correlation"},
+                x=numeric_columns,
+                y=numeric_columns,
+                color_continuous_scale="RdBu_r",
+                title=f"Feature Correlation Heatmap ({method.capitalize()})",
+            )
 
         # ✅ Select only numeric columns
         numeric_columns = [
@@ -44,11 +52,8 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
             f"📊 Computing {method} correlation for {len(numeric_columns)} features."
         )
 
-        # ✅ Limit dataset size to prevent slow computation
-        df = df.select(numeric_columns)  # Only keep numeric columns
-
-        # ✅ Convert Polars DataFrame to NumPy Array & handle NaN values
-        data = df.to_numpy()
+        df_select = df.select(numeric_columns)  # Only keep numeric columns
+        data = df_select.to_numpy()
         data = np.nan_to_num(
             data, nan=np.nanmean(data)
         )  # ✅ Replace NaNs with column mean
@@ -59,26 +64,22 @@ def register_correlation_heatmap_callbacks(app: "Dash") -> None:
                 corr_matrix = np.corrcoef(data, rowvar=False)
             elif method == "spearman":
                 corr_matrix = spearman_corr(data)
-
             else:
                 logger.error(f"❌ Unsupported correlation method: {method}")
                 return go.Figure()
 
-            # ✅ Generate Heatmap
-            fig = px.imshow(
+            # ✅ Store minimal dict in cache
+            CACHE_MANAGER.save_cache(cache_key, df, (numeric_columns, corr_matrix))
+            logger.info(f"💾 Cached correlation heatmap for {method}.")
+
+            return px.imshow(
                 corr_matrix,
                 labels={"color": "Correlation"},
-                x=df.columns,
-                y=df.columns,
+                x=numeric_columns,
+                y=numeric_columns,
                 color_continuous_scale="RdBu_r",
                 title=f"Feature Correlation Heatmap ({method.capitalize()})",
             )
-
-            # ✅ Store result in cache
-            CACHE_MANAGER.save_cache(cache_key, df, fig)
-            logger.info(f"💾 Cached correlation heatmap for {method}.")
-
-            return fig
 
         except Exception as e:
             logger.error(f"❌ Error computing correlation: {e}")

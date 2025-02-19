@@ -1,0 +1,162 @@
+time python cache_dump_tool.py --cache-hash 7c91022ce69b88f9
+
+📂 **Inspecting cache:** 7c91022ce69b88f9_index.pkl
+
+📌 **Index Data:**
+{
+      "missing_values_summary": 1,
+      "data_summary": 1,
+      "head_table": 1
+}
+
+📂 **Inspecting data file:** 7c91022ce69b88f9_data_1.pkl
+
+📌 **Cached Data:**
+{
+      "head_table": [
+            {
+                  "Id": 1,
+                  "SepalLengthCm": 5.1,
+                  "SepalWidthCm": 3.5,
+                  "PetalLengthCm": 1.4,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 2,
+                  "SepalLengthCm": 4.9,
+                  "SepalWidthCm": 3.0,
+                  "PetalLengthCm": 1.4,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 3,
+                  "SepalLengthCm": 4.7,
+                  "SepalWidthCm": 3.2,
+                  "PetalLengthCm": 1.3,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 4,
+                  "SepalLengthCm": 4.6,
+                  "SepalWidthCm": 3.1,
+                  "PetalLengthCm": 1.5,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 5,
+                  "SepalLengthCm": 5.0,
+                  "SepalWidthCm": 3.6,
+                  "PetalLengthCm": 1.4,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 6,
+                  "SepalLengthCm": 5.4,
+                  "SepalWidthCm": 3.9,
+                  "PetalLengthCm": 1.7,
+                  "PetalWidthCm": 0.4,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 7,
+                  "SepalLengthCm": 4.6,
+                  "SepalWidthCm": 3.4,
+                  "PetalLengthCm": 1.4,
+                  "PetalWidthCm": 0.3,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 8,
+                  "SepalLengthCm": 5.0,
+                  "SepalWidthCm": 3.4,
+                  "PetalLengthCm": 1.5,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 9,
+                  "SepalLengthCm": 4.4,
+                  "SepalWidthCm": 2.9,
+                  "PetalLengthCm": 1.4,
+                  "PetalWidthCm": 0.2,
+                  "Species": "Iris-setosa"
+            },
+            {
+                  "Id": 10,
+                  "SepalLengthCm": 4.9,
+                  "SepalWidthCm": 3.1,
+                  "PetalLengthCm": 1.5,
+                  "PetalWidthCm": 0.1,
+                  "Species": "Iris-setosa"
+            }
+      ],
+      "data_summary": [
+            {
+                  "Column": "Id",
+                  "Type": "Int64",
+                  "Size (KB)": 1.17,
+                  "Unique Values": "-",
+                  "Most Frequent Value": "-",
+                  "Zero Count": 0,
+                  "Entropy": "-",
+                  "Constant Column": "No"
+            },
+            {
+                  "Column": "SepalLengthCm",
+                  "Type": "Float64",
+                  "Size (KB)": 1.17,
+                  "Unique Values": "-",
+                  "Most Frequent Value": "-",
+                  "Zero Count": 0,
+                  "Entropy": "-",
+                  "Constant Column": "No"
+            },
+            {
+                  "Column": "SepalWidthCm",
+                  "Type": "Float64",
+                  "Size (KB)": 1.17,
+                  "Unique Values": "-",
+                  "Most Frequent Value": "-",
+                  "Zero Count": 0,
+                  "Entropy": "-",
+                  "Constant Column": "No"
+            },
+            {
+                  "Column": "PetalLengthCm",
+                  "Type": "Float64",
+                  "Size (KB)": 1.17,
+                  "Unique Values": "-",
+                  "Most Frequent Value": "-",
+                  "Zero Count": 0,
+                  "Entropy": "-",
+                  "Constant Column": "No"
+            },
+            {
+                  "Column": "PetalWidthCm",
+                  "Type": "Float64",
+                  "Size (KB)": 1.17,
+                  "Unique Values": "-",
+                  "Most Frequent Value": "-",
+                  "Zero Count": 0,
+                  "Entropy": "-",
+                  "Constant Column": "No"
+            },
+            {
+                  "Column": "Species",
+                  "Type": "String",
+                  "Size (KB)": 1.95,
+                  "Unique Values": 3,
+                  "Most Frequent Value": "Iris-setosa",
+                  "Zero Count": "-",
+                  "Entropy": 1.1,
+                  "Constant Column": "No"
+            }
+      ],
+      "missing_values_summary": []
+}
+python cache_dump_tool.py --cache-hash 7c91022ce69b88f9  0.89s user 0.13s system 95% cpu 1.066 total

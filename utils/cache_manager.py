@@ -9,6 +9,7 @@ from utils.logger_config import logger  # Import logger
 
 import joblib
 import io
+import threading
 
 
 class CacheManager:
@@ -24,6 +25,7 @@ class CacheManager:
         """Initialize cache manager and ensure cache directory exists."""
         self.CACHE_DIR.mkdir(exist_ok=True)
         logger.info(f"✅ CacheManager initialized. Cache Enabled: {self.ENABLE_CACHE}")
+        self.lock = threading.Lock()
 
     @staticmethod
     def compute_file_hash(df: pl.DataFrame, sample_size: int = 100) -> str:
@@ -115,84 +117,86 @@ class CacheManager:
         if not self.ENABLE_CACHE:
             logger.info(f"🔧 Cache disabled. Skipping save for {cache_key}.")
             return
+        with self.lock:
+            index_file = self.get_cache_index_file(df)
+            index_data = {}
 
-        index_file = self.get_cache_index_file(df)
-        index_data = {}
-
-        # ✅ Load index file if it exists
-        if index_file.exists():
-            try:
-                index_data = self.load_from_file(index_file)
-            except Exception as e:
-                logger.error(f"❌ Failed to read index file: {e}")
-                index_data = {}
-
-        # ✅ Remove old cache entry if it exists
-        if cache_key in index_data:
-            old_part_number = index_data[cache_key]
-            old_data_file = self.get_cache_data_file(df, old_part_number)
-
-            if old_data_file.exists():
+            # ✅ Load index file if it exists
+            if index_file.exists():
                 try:
-                    old_cache = self.load_from_file(old_data_file)
-
-                    # Remove the old key from the cache
-                    if cache_key in old_cache:
-                        del old_cache[cache_key]
-
-                    self.dump_to_file(old_data_file, old_cache)
-
-                    logger.info(
-                        f"🗑️ Removed old cache entry for {cache_key} from Part {old_part_number}"
-                    )
-
+                    index_data = self.load_from_file(index_file)
                 except Exception as e:
-                    logger.error(f"❌ Error removing old cache entry: {e}")
+                    logger.error(f"❌ Failed to read index file: {e}")
+                    index_data = {}
 
-        # ✅ Find the latest part number
-        part_number = max(index_data.values(), default=1)
-        data_file = self.get_cache_data_file(df, part_number)
+            # ✅ Remove old cache entry if it exists
+            if cache_key in index_data:
+                old_part_number = index_data[cache_key]
+                old_data_file = self.get_cache_data_file(df, old_part_number)
 
-        # ✅ Load or create cache part file
-        if data_file.exists():
-            try:
-                # with data_file.open("rb") as f:
-                #     file_cache = pickle.load(f)
-                file_cache = self.load_from_file(data_file)
-            except Exception as e:
-                logger.error(f"❌ Failed to read existing cache file: {e}")
-                file_cache = {}
-        else:
-            file_cache = {}
+                if old_data_file.exists():
+                    try:
+                        old_cache = self.load_from_file(old_data_file)
 
-        # ✅ Check if removing the old key made enough space
-        # estimated_size = pickle.dumps({cache_key: data})
-        buffer = io.BytesIO()
-        joblib.dump({cache_key: data}, buffer, compress=0)
-        estimated_size = len(buffer.getvalue())
-        if (
-            estimated_size + (data_file.stat().st_size if data_file.exists() else 0)
-            > self.MAX_FILE_SIZE
-        ):
-            # Move to a new part
-            part_number += 1
+                        # Remove the old key from the cache
+                        if cache_key in old_cache:
+                            del old_cache[cache_key]
+
+                        self.dump_to_file(old_data_file, old_cache)
+
+                        logger.info(
+                            f"🗑️ Removed old cache entry for {cache_key} from Part {old_part_number}"
+                        )
+
+                    except Exception as e:
+                        logger.error(f"❌ Error removing old cache entry: {e}")
+
+            # ✅ Find the latest part number
+            part_number = max(index_data.values(), default=1)
             data_file = self.get_cache_data_file(df, part_number)
-            file_cache = {}
 
-        # ✅ Store in Memory and File
-        file_cache[cache_key] = data
-        self.MEMORY_CACHE[data_file] = file_cache  # Store in-memory for quick access
+            # ✅ Load or create cache part file
+            if data_file.exists():
+                try:
+                    # with data_file.open("rb") as f:
+                    #     file_cache = pickle.load(f)
+                    file_cache = self.load_from_file(data_file)
+                except Exception as e:
+                    logger.error(f"❌ Failed to read existing cache file: {e}")
+                    file_cache = {}
+            else:
+                file_cache = {}
 
-        # ✅ Save the data
-        self.dump_to_file(data_file, file_cache)
+            # ✅ Check if removing the old key made enough space
+            # estimated_size = pickle.dumps({cache_key: data})
+            buffer = io.BytesIO()
+            joblib.dump({cache_key: data}, buffer, compress=0)
+            estimated_size = len(buffer.getvalue())
+            if (
+                estimated_size + (data_file.stat().st_size if data_file.exists() else 0)
+                > self.MAX_FILE_SIZE
+            ):
+                # Move to a new part
+                part_number += 1
+                data_file = self.get_cache_data_file(df, part_number)
+                file_cache = {}
 
-        # ✅ Update the index
-        index_data[cache_key] = part_number
-        self.MEMORY_CACHE[index_file] = index_data  # Store index in-memory
+            # ✅ Store in Memory and File
+            file_cache[cache_key] = data
+            self.MEMORY_CACHE[data_file] = (
+                file_cache  # Store in-memory for quick access
+            )
 
-        self.dump_to_file(index_file, index_data)
+            # ✅ Save the data
+            self.dump_to_file(data_file, file_cache)
 
-        logger.info(f"💾 Cache stored for {cache_key} in Part {part_number}")
+            # ✅ Update the index
+            index_data[cache_key] = part_number
+            self.MEMORY_CACHE[index_file] = index_data  # Store index in-memory
+
+            self.dump_to_file(index_file, index_data)
+
+            logger.info(f"💾 Cache stored for {cache_key} in Part {part_number}")
 
     def clear_cache(self) -> None:
         """Clears all cached data from memory and disk."""
