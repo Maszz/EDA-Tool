@@ -3,6 +3,7 @@ import json
 import pickle
 import pprint
 from pathlib import Path
+import joblib
 
 CACHE_DIR = Path("./.cache")  # Default cache directory
 
@@ -10,8 +11,7 @@ CACHE_DIR = Path("./.cache")  # Default cache directory
 def load_pickle_file(file_path: Path):
     """Loads a pickle file and returns its content."""
     try:
-        with file_path.open("rb") as f:
-            return pickle.load(f)
+        return joblib.load(file_path)
     except (EOFError, pickle.UnpicklingError) as e:
         print(f"⚠️ Skipping corrupted file {file_path}: {e}")
         return None
@@ -23,7 +23,7 @@ def load_pickle_file(file_path: Path):
 def beautify_cache_data(data):
     """Formats data in a human-readable way."""
     try:
-        return json.dumps(data, indent=4, ensure_ascii=False)
+        return json.dumps(data, indent=6, ensure_ascii=True)
     except (TypeError, ValueError):
         return pprint.pformat(data, indent=4, width=120)
 

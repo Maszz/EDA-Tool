@@ -1,12 +1,14 @@
 import hashlib
 import os
-import pickle
 from pathlib import Path
 from typing import Any
 import xxhash
 import polars as pl
 
 from utils.logger_config import logger  # Import logger
+
+import joblib
+import io
 
 
 class CacheManager:
@@ -68,7 +70,7 @@ class CacheManager:
     def get_cache_data_file(self, df: pl.DataFrame, part_number: int) -> Path:
         """Returns the cache data file path based on dataset hash and part number."""
         file_hash = self.compute_file_hash(df)
-        return self.CACHE_DIR / f"{file_hash}_data{part_number}.pkl"
+        return self.CACHE_DIR / f"{file_hash}_data_{part_number}.pkl"
 
     def load_cache(self, cache_key: str, df: pl.DataFrame) -> Any:
         """Loads cached results from memory or disk if available."""
@@ -81,8 +83,8 @@ class CacheManager:
         # ✅ Load index file if exists
         if index_file.exists():
             try:
-                with index_file.open("rb") as f:
-                    index_data = pickle.load(f)
+
+                index_data = self.load_from_file(index_file)
             except Exception as e:
                 logger.error(f"❌ Failed to read index file: {e}")
                 return None
@@ -97,13 +99,12 @@ class CacheManager:
             # ✅ Load the cached data from file
             if data_file.exists():
                 try:
-                    with data_file.open("rb") as f:
-                        file_cache = pickle.load(f)
-                        if cache_key in file_cache:
-                            logger.info(
-                                f"✅ Cache hit for {cache_key} (Part {part_number})"
-                            )
-                            return file_cache[cache_key]
+                    file_cache = self.load_from_file(data_file)
+                    if cache_key in file_cache:
+                        logger.info(
+                            f"✅ Cache hit for {cache_key} (Part {part_number})"
+                        )
+                        return file_cache[cache_key]
                 except Exception as e:
                     logger.error(f"❌ Cache file corrupted: {e}")
 
@@ -121,8 +122,7 @@ class CacheManager:
         # ✅ Load index file if it exists
         if index_file.exists():
             try:
-                with index_file.open("rb") as f:
-                    index_data = pickle.load(f)
+                index_data = self.load_from_file(index_file)
             except Exception as e:
                 logger.error(f"❌ Failed to read index file: {e}")
                 index_data = {}
@@ -134,16 +134,13 @@ class CacheManager:
 
             if old_data_file.exists():
                 try:
-                    with old_data_file.open("rb") as f:
-                        old_cache = pickle.load(f)
+                    old_cache = self.load_from_file(old_data_file)
 
                     # Remove the old key from the cache
                     if cache_key in old_cache:
                         del old_cache[cache_key]
 
-                    # Save back the cleaned file
-                    with old_data_file.open("wb") as f:
-                        pickle.dump(old_cache, f)
+                    self.dump_to_file(old_data_file, old_cache)
 
                     logger.info(
                         f"🗑️ Removed old cache entry for {cache_key} from Part {old_part_number}"
@@ -159,8 +156,9 @@ class CacheManager:
         # ✅ Load or create cache part file
         if data_file.exists():
             try:
-                with data_file.open("rb") as f:
-                    file_cache = pickle.load(f)
+                # with data_file.open("rb") as f:
+                #     file_cache = pickle.load(f)
+                file_cache = self.load_from_file(data_file)
             except Exception as e:
                 logger.error(f"❌ Failed to read existing cache file: {e}")
                 file_cache = {}
@@ -168,10 +166,12 @@ class CacheManager:
             file_cache = {}
 
         # ✅ Check if removing the old key made enough space
-        estimated_size = pickle.dumps({cache_key: data})
+        # estimated_size = pickle.dumps({cache_key: data})
+        buffer = io.BytesIO()
+        joblib.dump({cache_key: data}, buffer, compress=0)
+        estimated_size = len(buffer.getvalue())
         if (
-            len(estimated_size)
-            + (data_file.stat().st_size if data_file.exists() else 0)
+            estimated_size + (data_file.stat().st_size if data_file.exists() else 0)
             > self.MAX_FILE_SIZE
         ):
             # Move to a new part
@@ -184,15 +184,13 @@ class CacheManager:
         self.MEMORY_CACHE[data_file] = file_cache  # Store in-memory for quick access
 
         # ✅ Save the data
-        with data_file.open("wb") as f:
-            pickle.dump(file_cache, f)
+        self.dump_to_file(data_file, file_cache)
 
         # ✅ Update the index
         index_data[cache_key] = part_number
         self.MEMORY_CACHE[index_file] = index_data  # Store index in-memory
 
-        with index_file.open("wb") as f:
-            pickle.dump(index_data, f)
+        self.dump_to_file(index_file, index_data)
 
         logger.info(f"💾 Cache stored for {cache_key} in Part {part_number}")
 
@@ -209,6 +207,12 @@ class CacheManager:
             except Exception as e:
                 logger.error(f"❌ Failed to delete cache {file.name}: {e}")
         logger.info("🗑️ Cache cleared!")
+
+    def load_from_file(self, path: str):
+        return joblib.load(path)
+
+    def dump_to_file(self, path: str, obj):
+        return joblib.dump(obj, path, compress=0)
 
 
 # ✅ Singleton instance
