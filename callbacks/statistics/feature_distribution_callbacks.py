@@ -112,7 +112,7 @@ def register_feature_distribution_callbacks(app: "Dash") -> None:
 
         # **Overlay KDE Line (Adjusted Scaling)**
         fig.add_trace(
-            go.Scatter(
+            go.Scattergl(
                 x=x_vals,
                 y=y_vals
                 * np.ptp(column_data)

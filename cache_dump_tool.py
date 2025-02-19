@@ -42,7 +42,9 @@ def get_cache_files_by_hash(cache_hash: str):
     return index_file, data_files
 
 
-def dump_cache_by_hash(cache_hash: str | None, output_path: str | None = None) -> None:
+def dump_cache_by_hash(
+    cache_hash: str | None, output_path: str | None = None, pretty: bool | None = None
+) -> None:
     """Dumps cache data for a given hash."""
     if not cache_hash:
         print("❌ Please specify a hash using --cache-hash")
@@ -70,7 +72,10 @@ def dump_cache_by_hash(cache_hash: str | None, output_path: str | None = None) -
     for data_file in data_files:
         print(f"\n📂 **Inspecting data file:** {data_file.name}")
         data_cache = load_pickle_file(data_file)
-        formatted_data = beautify_cache_data(data_cache)
+        if pretty:
+            formatted_data = beautify_cache_data(data_cache)
+        else:
+            formatted_data = data_cache
 
         print("\n📌 **Cached Data:**")
         print(formatted_data)
@@ -95,6 +100,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output", type=str, help="Optional file to save the formatted dump."
     )
+    parser.add_argument(
+        "--pretty",
+        type=bool,
+        help="Pretty print the cache data.",
+        default=False,
+    )
 
     args = parser.parse_args()
-    dump_cache_by_hash(cache_hash=args.cache_hash, output_path=args.output)
+    dump_cache_by_hash(
+        cache_hash=args.cache_hash, output_path=args.output, pretty=args.pretty
+    )
