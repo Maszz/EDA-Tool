@@ -43,14 +43,14 @@ def get_cache_files_by_hash(cache_hash: str):
 
 
 def dump_cache_by_hash(
-    cache_hash: str | None, output_path: str | None = None, pretty: bool | None = None
+    **kwargs,
 ) -> None:
     """Dumps cache data for a given hash."""
-    if not cache_hash:
+    if not kwargs.get("cache_hash"):
         print("❌ Please specify a hash using --cache-hash")
         return
 
-    index_file, data_files = get_cache_files_by_hash(cache_hash)
+    index_file, data_files = get_cache_files_by_hash(kwargs["cache_hash"])
 
     if not index_file or not data_files:
         return
@@ -70,9 +70,13 @@ def dump_cache_by_hash(
 
     # Read all data parts
     for data_file in data_files:
+        if kwargs.get("part_number") and kwargs["part_number"] != int(
+            data_file.name.split("_")[-1][0]
+        ):
+            continue
         print(f"\n📂 **Inspecting data file:** {data_file.name}")
         data_cache = load_pickle_file(data_file)
-        if pretty:
+        if kwargs.get("pretty"):
             formatted_data = beautify_cache_data(data_cache)
         else:
             formatted_data = data_cache
@@ -83,8 +87,8 @@ def dump_cache_by_hash(
         results["data"][data_file.name] = formatted_data
 
     # Save to file if requested
-    if output_path:
-        output_file = Path(output_path)
+    if kwargs.get("output"):
+        output_file = Path(kwargs["output"])
         with output_file.open("w", encoding="utf-8") as f:
             json.dump(results, f, indent=4, ensure_ascii=False)
         print(f"\n✅ Cache dump saved to {output_file}")
@@ -106,8 +110,17 @@ if __name__ == "__main__":
         help="Pretty print the cache data.",
         default=False,
     )
+    parser.add_argument(
+        "--part-number",
+        type=int,
+        help="Optional part number to inspect.",
+        default=None,
+    )
 
     args = parser.parse_args()
     dump_cache_by_hash(
-        cache_hash=args.cache_hash, output_path=args.output, pretty=args.pretty
+        cache_hash=args.cache_hash,
+        output_path=args.output,
+        pretty=args.pretty,
+        part_number=args.part_number,
     )
