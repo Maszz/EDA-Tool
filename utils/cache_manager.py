@@ -18,7 +18,7 @@ class CacheManager:
     CACHE_DIR = Path("./.cache")  # Persistent cache directory
     MEMORY_CACHE: dict[str, Any] = {}  # In-memory cache
     # MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB per cache file
-    MAX_FILE_SIZE = 8 * 1024  # 100MB per cache file
+    MAX_FILE_SIZE = 16 * 1024
 
     ENABLE_CACHE = os.environ.get("ENABLE_CACHE", "false").lower() == "true"
     ENABLE_SAMPLE = os.environ.get("ENABLE_SAMPLE", "false").lower() == "true"
