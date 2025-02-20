@@ -18,7 +18,7 @@ class CacheManager:
     CACHE_DIR = Path("./.cache")  # Persistent cache directory
     MEMORY_CACHE: dict[str, Any] = {}  # In-memory cache
     # MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB per cache file
-    MAX_FILE_SIZE = 16 * 1024
+    MAX_FILE_SIZE = 8 * 1024
 
     ENABLE_CACHE = os.environ.get("ENABLE_CACHE", "false").lower() == "true"
     ENABLE_SAMPLE = os.environ.get("ENABLE_SAMPLE", "false").lower() == "true"
@@ -174,14 +174,39 @@ class CacheManager:
             buffer = io.BytesIO()
             joblib.dump({cache_key: data}, buffer, compress=0)
             estimated_size = len(buffer.getvalue())
-            if (
-                estimated_size + (data_file.stat().st_size if data_file.exists() else 0)
-                > self.MAX_FILE_SIZE
-            ):
-                # Move to a new part
-                part_number += 1
+
+            available_part = None
+            for part_number in sorted(
+                set(index_data.values())
+            ):  # Search existing parts
                 data_file = self.get_cache_data_file(df, part_number)
-                file_cache = {}
+                if not data_file.exists():
+                    continue  # Skip non-existent files
+
+                try:
+                    file_cache = self.load_from_file(data_file)
+                    current_size = data_file.stat().st_size
+
+                    if current_size + estimated_size <= self.MAX_FILE_SIZE:
+                        available_part = part_number
+                        break  # ✅ Found a part that fits, stop searching
+                except Exception as e:
+                    logger.error(f"❌ Error reading cache part {part_number}: {e}")
+
+            if available_part is None:
+                available_part = max(
+                    index_data.values(), default=1
+                )  # Allocate next part
+                data_file = self.get_cache_data_file(df, available_part)
+                file_cache = {}  # Start a fresh cache
+
+            else:
+                data_file = self.get_cache_data_file(df, available_part)
+                file_cache = (
+                    self.load_from_file(data_file) if data_file.exists() else {}
+                )
+
+            # ✅ Store cache data
 
             # ✅ Store in Memory and File
             file_cache[cache_key] = data
