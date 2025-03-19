@@ -30,6 +30,10 @@ from callbacks.visualizations import (
     register_violin_plot_callbacks,
     register_visualization_selector_callbacks,
 )
+from callbacks.data_cleaning import (
+    register_data_cleaning_callbacks,
+    register_data_cleaning_selector_callbacks,
+)
 from components.upload import upload_component
 from utils.logger_config import logger  # Import the logger
 from utils.store import Store
@@ -135,6 +139,19 @@ class AppManager:
                                         dbc.NavLink(
                                             "🤖 Feature Importance",
                                             href="/feature-importance",
+                                            active="exact",
+                                            style={
+                                                "color": "white",
+                                                "padding": "12px 15px",
+                                                "borderRadius": "5px",
+                                                "textDecoration": "none",
+                                                "transition": "0.3s",
+                                            },
+                                            className="nav-item",
+                                        ),
+                                        dbc.NavLink(
+                                            "🧹 Data Cleaning",
+                                            href="/data-cleaning",
                                             active="exact",
                                             style={
                                                 "color": "white",
@@ -288,6 +305,9 @@ class AppManager:
         register_feature_importance_selector_callbacks(self.app)
         register_feature_importance_plot_callbacks(self.app)
 
+        # Register Data Cleaning Callbacks
+        register_data_cleaning_callbacks(self.app)
+        register_data_cleaning_selector_callbacks(self.app)
         # register_head_table_callbacks(self.app)
         # register_stat_table_callbacks(self.app)
         # register_missing_values_callbacks(self.app)
