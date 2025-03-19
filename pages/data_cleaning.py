@@ -3,6 +3,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output, State
 import pandas as pd
 import numpy as np
+import polars as pl
 
 dash.register_page(__name__, path="/data-cleaning", title="Data Cleaning")
 
@@ -44,6 +45,7 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                             id="apply-missing-treatment",
                                             color="primary",
                                             className="mt-3",
+                                            disabled=True,
                                         ),
                                     ]
                                 ),
@@ -52,44 +54,6 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                         ),
                         width=6,
                     ),
-                    dbc.Col(
-                        dbc.Card(
-                            [
-                                dbc.CardHeader(
-                                    "Outlier Detection",
-                                    className="bg-warning text-white",
-                                ),
-                                dbc.CardBody(
-                                    [
-                                        html.Label("Select Column:"),
-                                        dcc.Dropdown(id="column-select-outlier"),
-                                        html.Label("Method:"),
-                                        dcc.Dropdown(
-                                            id="outlier-method",
-                                            options=[
-                                                {"label": "IQR Method", "value": "iqr"},
-                                                {"label": "Z-Score", "value": "zscore"},
-                                            ],
-                                        ),
-                                        dbc.Button(
-                                            "Detect Outliers",
-                                            id="detect-outliers",
-                                            color="warning",
-                                            className="mt-3",
-                                        ),
-                                    ]
-                                ),
-                            ],
-                            className="shadow-sm",
-                        ),
-                        width=6,
-                    ),
-                ],
-                className="justify-content-center mb-4",
-            ),
-            # Data Type Conversion
-            dbc.Row(
-                [
                     dbc.Col(
                         dbc.Card(
                             [
@@ -104,23 +68,14 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                         html.Label("Convert To:"),
                                         dcc.Dropdown(
                                             id="type-conversion",
-                                            options=[
-                                                {
-                                                    "label": "Numeric",
-                                                    "value": "numeric",
-                                                },
-                                                {
-                                                    "label": "Categorical",
-                                                    "value": "categorical",
-                                                },
-                                                {"label": "Date", "value": "date"},
-                                            ],
+                                            options=[],  # Will be populated dynamically
                                         ),
                                         dbc.Button(
                                             "Convert Type",
                                             id="convert-type",
                                             color="success",
                                             className="mt-3",
+                                            disabled=True,
                                         ),
                                     ]
                                 ),
@@ -129,6 +84,12 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                         ),
                         width=6,
                     ),
+                ],
+                className="justify-content-center mb-4",
+            ),
+            # Duplicate Handling
+            dbc.Row(
+                [
                     dbc.Col(
                         dbc.Card(
                             [
@@ -138,25 +99,20 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                 ),
                                 dbc.CardBody(
                                     [
-                                        html.Label(
-                                            "Select Columns for Duplicate Check:"
-                                        ),
-                                        dcc.Dropdown(
-                                            id="duplicate-columns",
-                                            multi=True,
-                                        ),
+                                        html.Div(id="duplicate-info", className="mb-3"),
                                         dbc.Button(
-                                            "Remove Duplicates",
+                                            "Remove Duplicate Rows",
                                             id="remove-duplicates",
                                             color="danger",
                                             className="mt-3",
+                                            disabled=True,
                                         ),
                                     ]
                                 ),
                             ],
                             className="shadow-sm",
                         ),
-                        width=6,
+                        width=12,
                     ),
                 ],
                 className="justify-content-center mb-4",
@@ -172,10 +128,29 @@ def layout(**kwargs: dict[str, str]) -> "html.Div":
                                     className="bg-primary text-white",
                                 ),
                                 dbc.CardBody(
-                                    dcc.Loading(
-                                        type="circle",
-                                        children=[html.Div(id="cleaned-data-preview")],
-                                    )
+                                    [
+                                        dcc.Loading(
+                                            type="circle",
+                                            children=[
+                                                html.Div(id="cleaned-data-preview")
+                                            ],
+                                        ),
+                                        html.Div(
+                                            [
+                                                dbc.Button(
+                                                    "📥 Download Cleaned Data",
+                                                    id="download-cleaned-data",
+                                                    color="primary",
+                                                    className="mt-3",
+                                                    disabled=True,
+                                                ),
+                                                dcc.Download(
+                                                    id="download-dataframe-csv"
+                                                ),
+                                            ],
+                                            className="text-center",
+                                        ),
+                                    ]
                                 ),
                             ],
                             className="shadow-sm",
