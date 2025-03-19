@@ -11,6 +11,7 @@ dash.register_page(__name__, path="/data-cleaning", title="Data Cleaning")
 def layout(**kwargs: dict[str, str]) -> "html.Div":
     return dbc.Container(
         [
+            dcc.Store(id="data-cleaning-trigger", data=False),
             html.H1("🧹 Data Cleaning", className="display-4 text-center"),
             html.P(
                 "Clean your dataset by handling missing values, outliers, and data inconsistencies.",

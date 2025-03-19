@@ -2,6 +2,32 @@ import polars as pl
 from dash import Input, Output, ctx, State
 from utils.logger_config import logger
 from utils.store import Store
+from typing import List, Dict, Any, Optional, Tuple
+
+
+def get_missing_columns(df: pl.DataFrame) -> List[Dict[str, Any]]:
+    """Get columns with missing values and their counts."""
+    missing_columns = [
+        {
+            "label": f"{col} ({df[col].null_count()} rows)",
+            "value": col,
+        }
+        for col in df.columns
+        if df[col].null_count() > 0
+    ]
+    return (
+        missing_columns
+        if missing_columns
+        else [{"label": "No missing values found", "value": None}]
+    )
+
+
+def get_duplicate_info(df: pl.DataFrame) -> Tuple[str, bool]:
+    """Get duplicate row information and button state."""
+    duplicate_count = df.height - df.unique().height
+    if duplicate_count > 0:
+        return f"Found {duplicate_count} duplicate rows", False
+    return "No duplicate rows found", True
 
 
 def register_data_cleaning_selector_callbacks(app) -> None:
@@ -17,15 +43,21 @@ def register_data_cleaning_selector_callbacks(app) -> None:
             Output("remove-duplicates", "disabled"),
             Output("download-cleaned-data", "disabled"),
         ],
-        Input("file-upload-status", "data"),
+        [
+            Input("file-upload-status", "data"),
+            Input("data-cleaning-trigger", "data"),
+        ],
     )
-    def update_column_dropdowns(file_uploaded):
+    def update_column_dropdowns(
+        file_uploaded: bool,
+        data_cleaning_trigger: Optional[bool],
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], str, bool, bool, bool, bool]:
         """Populates the dropdowns with available columns."""
         if not file_uploaded:
             logger.warning("⚠️ No file uploaded. Cannot populate column dropdowns.")
             return [], [], "Please upload a dataset first.", True, True, True, True
 
-        df: pl.DataFrame = Store.get_static("data_frame")
+        df: Optional[pl.DataFrame] = Store.get_static("data_frame")
 
         if df is None:
             logger.warning(
@@ -33,42 +65,29 @@ def register_data_cleaning_selector_callbacks(app) -> None:
             )
             return [], [], "Dataset not found in memory.", True, True, True, True
 
-        # Get all column names for type conversion
-        all_columns = [{"label": col, "value": col} for col in df.columns]
+        try:
+            # Get all column names for type conversion
+            all_columns = [{"label": col, "value": col} for col in df.columns]
 
-        # Get columns with missing values and their counts
-        missing_columns = [
-            {
-                "label": f"{col} ({df[col].null_count()} rows)",
-                "value": col,
-            }
-            for col in df.columns
-            if df[col].null_count() > 0
-        ]
+            # Get columns with missing values
+            missing_columns = get_missing_columns(df)
 
-        # Check for duplicate rows
-        duplicate_count = df.height - df.unique().height
-        if duplicate_count > 0:
-            duplicate_info = f"Found {duplicate_count} duplicate rows"
-            remove_duplicates_disabled = False
-        else:
-            duplicate_info = "No duplicate rows found"
-            remove_duplicates_disabled = True
+            # Get duplicate information
+            duplicate_info, remove_duplicates_disabled = get_duplicate_info(df)
 
-        # Add message if no missing values
-        if not missing_columns:
-            missing_columns = [{"label": "No missing values found", "value": None}]
-
-        logger.info("✅ Column dropdowns updated successfully.")
-        return (
-            missing_columns,
-            all_columns,
-            duplicate_info,
-            False,
-            False,
-            remove_duplicates_disabled,
-            False,
-        )
+            logger.info("✅ Column dropdowns updated successfully.")
+            return (
+                missing_columns,
+                all_columns,
+                duplicate_info,
+                False,
+                False,
+                remove_duplicates_disabled,
+                False,
+            )
+        except Exception as e:
+            logger.error(f"❌ Error updating column dropdowns: {str(e)}")
+            return [], [], "Error updating dropdowns", True, True, True, True
 
     @app.callback(
         Output("type-conversion", "options"),
