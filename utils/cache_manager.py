@@ -1,22 +1,21 @@
-import hashlib
+import io
 import os
+import threading
 from pathlib import Path
 from typing import Any
-import xxhash
-import polars as pl
-
-from utils.logger_config import logger  # Import logger
 
 import joblib
-import io
-import threading
+import polars as pl
+import xxhash
+
+from utils.logger_config import logger  # Import logger
 
 
 class CacheManager:
     """Handles in-memory and file-based caching with file chunking for large datasets."""
 
     CACHE_DIR = Path("./.cache")  # Persistent cache directory
-    MEMORY_CACHE: dict[str, Any] = {}  # In-memory cache
+    MEMORY_CACHE: dict[str | Path, Any] = {}  # In-memory cache
     # MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB per cache file
     MAX_FILE_SIZE = 8 * 1024
 
@@ -87,7 +86,6 @@ class CacheManager:
         # ✅ Load index file if exists
         if index_file.exists():
             try:
-
                 index_data = self.load_from_file(index_file)
             except Exception as e:
                 logger.error(f"❌ Failed to read index file: {e}")
@@ -239,10 +237,10 @@ class CacheManager:
                 logger.error(f"❌ Failed to delete cache {file.name}: {e}")
         logger.info("🗑️ Cache cleared!")
 
-    def load_from_file(self, path: str):
+    def load_from_file(self, path: str | Path):
         return joblib.load(path)
 
-    def dump_to_file(self, path: str, obj):
+    def dump_to_file(self, path: str | Path, obj: Any):
         return joblib.dump(obj, path, compress=0)
 
 
