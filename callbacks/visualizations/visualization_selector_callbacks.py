@@ -56,14 +56,14 @@ def register_visualization_selector_callbacks(app) -> None:
             categorical_options = get_dropdown_options(categorical_columns)
 
             # Set default values
-            default_x = numeric_columns[0] if numeric_columns else None
-            default_y = numeric_columns[1] if len(numeric_columns) > 1 else None
-            default_pairplot = numeric_columns[:2] if len(numeric_columns) > 1 else []
-            default_parallel = numeric_columns[:2] if len(numeric_columns) > 1 else []
+            default_x = numeric_columns[1] if numeric_columns else None
+            default_y = numeric_columns[2] if len(numeric_columns) > 2 else None
+            default_pairplot = numeric_columns[1:3] if len(numeric_columns) > 2 else []
+            default_parallel = numeric_columns[1:3] if len(numeric_columns) > 2 else []
             default_categorical = (
                 categorical_columns[0] if categorical_columns else None
             )
-            default_numeric_violin = numeric_columns[0] if numeric_columns else None
+            default_numeric_violin = numeric_columns[1] if numeric_columns else None
 
             logger.info("✅ Dropdowns successfully updated with dataset features.")
 

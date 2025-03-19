@@ -136,6 +136,17 @@ def register_file_callbacks(app: "Dash") -> None:
 
             # Read CSV file using Polars
             df = pl.read_csv(io.StringIO(decoded.decode("utf-8")))
+            # Check if the first column is an incremental integer
+            first_col_name = df.columns[0]
+            if df[first_col_name].dtype == pl.Int64 and df[first_col_name].is_sorted():
+                logger.info(f"✅ Using '{first_col_name}' as the ID column.")
+            else:
+                logger.info(
+                    "⚠️ First column is not an incremental integer, adding new ID column."
+                )
+                df = df.with_columns(pl.Series("id", range(1, len(df) + 1)))
+                column_order = ["id"] + [col for col in df.columns if col != "id"]
+                df = df.select(column_order)
 
             # Store DataFrame and filename
             Store.set_static("data_frame", df)
