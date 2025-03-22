@@ -37,12 +37,10 @@ def create_preview_data(
     df: pl.DataFrame, rows: int = 5
 ) -> tuple[list[Dict[str, Any]], list[str]]:
     """Create preview data for the table display."""
-    preview_df = df.head(rows)
     preview_data = [
-        {col: preview_df[i][col].to_list()[0] for col in preview_df.columns}
-        for i in range(len(preview_df))
+        {col: df[i][col].to_list()[0] for col in df.columns} for i in range(len(df))
     ]
-    return preview_data, list(preview_df.columns)
+    return preview_data, list(df.columns)
 
 
 def register_data_cleaning_callbacks(app):
