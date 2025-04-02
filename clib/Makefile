@@ -7,6 +7,10 @@ build:
 	@echo "Building Cython extensions..."
 	python setup.py build_ext --inplace
 
+install:
+	@echo "Installing clib..."
+	python setup.py install
+
 # Run tests for clib
 test: build
 	@echo "Running tests for clib..."

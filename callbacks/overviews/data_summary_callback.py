@@ -15,6 +15,7 @@ def generate_summary_table(data, columns, title):
             data=data,
             columns=[{"name": col, "id": col} for col in columns],
             style_table={
+                # "minHeight": "200px",
                 "maxHeight": "400px",
                 "overflowY": "auto",
                 "borderRadius": "8px",
@@ -160,25 +161,34 @@ def register_data_summary_callbacks(app) -> None:
                 "⚠️ Missing Values Summary",
             )
 
-        missing_counts = df.null_count().to_dict(as_series=False)
-        missing_counts = {
-            col: (
-                int(missing_counts[col][0])
-                if isinstance(missing_counts[col], list)
-                else int(missing_counts[col])
-            )
-            for col in df.columns
-        }
-
+        # missing_counts = df.null_count().to_dict(as_series=False)
+        # missing_counts = {
+        #     col: (
+        #         int(missing_counts[col][0])
+        #         if isinstance(missing_counts[col], list)
+        #         else int(missing_counts[col])
+        #     )
+        #     for col in df.columns
+        # }
         missing_table_data = [
             {
+                "Missing Count": df[col].null_count(),
                 "Column": col,
-                "Missing Count": missing_counts[col],
-                "Missing %": f"{(missing_counts[col] / df.height * 100):.2f}%",
+                "Missing %": f"{(df[col].null_count() / df.height * 100):.2f}%",
             }
             for col in df.columns
-            if missing_counts[col] > 0
+            if df[col].null_count() > 0
         ]
+
+        # missing_table_data = [
+        #     {
+        #         "Column": col,
+        #         "Missing Count": missing_counts[col],
+        #         "Missing %": f"{(missing_counts[col] / df.height * 100):.2f}%",
+        #     }
+        #     for col in df.columns
+        #     if missing_counts[col] > 0
+        # ]
         CACHE_MANAGER.save_cache(cache_key, df, missing_table_data)
         return generate_summary_table(
             missing_table_data,

@@ -6,5 +6,4 @@ app = app_manager.app
 server = app_manager.app.server  # Gunicorn requires a WSGI server object
 
 if __name__ == "__main__":
-
     app.run(debug=True)

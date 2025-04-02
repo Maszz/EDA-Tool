@@ -1,4 +1,5 @@
 blinker==1.9.0
+orjson==3.10.15
 certifi==2024.12.14
 charset-normalizer==3.4.1
 click==8.1.8
@@ -30,3 +31,9 @@ tzdata==2025.1
 urllib3==2.3.0
 Werkzeug==3.0.6
 zipp==3.21.0
+dash_bootstrap_components
+lightgbm
+boruta
+xxhash
+plotly_resampler
+gunicorn
