@@ -11,7 +11,7 @@ Flask==3.0.3
 idna==3.10
 importlib_metadata==8.6.1
 itsdangerous==2.2.0
-Jinja2==3.1.5
+Jinja2==3.1.6
 MarkupSafe==3.0.2
 nest-asyncio==1.6.0
 numpy==2.2.2
