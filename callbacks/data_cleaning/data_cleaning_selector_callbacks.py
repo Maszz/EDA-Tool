@@ -18,7 +18,7 @@ def get_missing_columns(df: pl.DataFrame) -> List[Dict[str, Any]]:
     return (
         missing_columns
         if missing_columns
-        else [{"label": "No missing values found", "value": None}]
+        else [{"label": "No missing values found", "value": "None"}]
     )
 
 

@@ -93,6 +93,8 @@ def register_data_cleaning_callbacks(app):
                 if missing_col and missing_method:
                     if missing_col is None:  # No missing values found
                         return "No missing values to treat.", False
+                    if missing_col == "None":
+                        return "Please select a column to treat.", False
                     logger.info(
                         f"🧹 Applying {missing_method} treatment to {missing_col}"
                     )
