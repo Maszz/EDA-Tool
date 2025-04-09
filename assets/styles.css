@@ -1,0 +1,17 @@
+@font-face {
+  font-family: "PP Hatton UltraLight";
+  src: url("PP\ Hatton\ Ultralight\ 200.otf");
+  font-weight: 200; /* Ultralight */
+}
+
+@font-face {
+  font-family: "PP Hatton Medium";
+  src: url("PP\ Hatton\ Medium\ 500.otf");
+  font-weight: 500; /* Medium */
+}
+
+@font-face {
+  font-family: "PP Hatton Bold";
+  src: url("PP\ Hatton\ Bold\ 700.otf");
+  font-weight: 700; /* Bold */
+}
