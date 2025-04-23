@@ -24,7 +24,7 @@ docker build -t <image-name> .
 3. Run the docker container
 
 ```bash
-docker run -p 8050:8050 <image-name>
+docker run -p 8050:80 <image-name>
 ```
 
 4. Open your browser and go to `http://localhost:8050`
